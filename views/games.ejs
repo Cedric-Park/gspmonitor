@@ -1,0 +1,92 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">게임 목록</h5>
+      </div>
+      <div class="card-body">
+        <% if (userRole === '담당자') { %>
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle-fill me-2"></i> 현재 사용자의 역할은 <strong>담당자</strong>입니다. 담당하고 있는 게임사의 게임 정보만 표시됩니다.
+        </div>
+        <% } else if (userRole === '매니저') { %>
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle-fill me-2"></i> 현재 사용자의 역할은 <strong>매니저</strong>입니다. 모든 게임사의 게임 정보를 확인할 수 있습니다.
+        </div>
+        <% } %>
+        
+        <% if (Object.keys(gamesByCompany).length > 0) { %>
+          <div class="accordion" id="gamesAccordion">
+            <% Object.entries(gamesByCompany).forEach(([company, games], index) => { %>
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="heading<%= index %>">
+                  <button class="accordion-button <%= index > 0 ? 'collapsed' : '' %>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<%= index %>" aria-expanded="<%= index === 0 ? 'true' : 'false' %>" aria-controls="collapse<%= index %>">
+                    <%= company %> (<%= games.length %>개 게임)
+                  </button>
+                </h2>
+                <div id="collapse<%= index %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>" aria-labelledby="heading<%= index %>" data-bs-parent="#gamesAccordion">
+                  <div class="accordion-body">
+                    <div class="table-responsive">
+                      <table class="table table-hover">
+                        <thead class="table-light">
+                          <tr>
+                            <th>게임명</th>
+                            <th>플랫폼</th>
+                            <th class="text-end">기본 포인트</th>
+                            <th class="text-end">자부담 포인트</th>
+                            <th class="text-end">총 포인트</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% games.forEach(game => { %>
+                            <tr>
+                              <td><%= game.game_name %></td>
+                              <td>
+                                <% 
+                                  let badgeClass = "bg-secondary";
+                                  const platform = game.platform.toLowerCase();
+                                  if (platform.includes('모바일')) {
+                                    badgeClass = "bg-primary";
+                                  } else if (platform.includes('pc') || platform.includes('vr') || platform.includes('콘솔')) {
+                                    badgeClass = "bg-danger";
+                                  } else if (platform.includes('웹')) {
+                                    badgeClass = "bg-success";
+                                  }
+                                %>
+                                <span class="badge <%= badgeClass %>"><%= game.platform %></span>
+                              </td>
+                              <td class="text-end"><%= game.base_points.toLocaleString() %></td>
+                              <td class="text-end"><%= game.self_points.toLocaleString() %></td>
+                              <td class="text-end"><strong><%= game.total_points.toLocaleString() %></strong></td>
+                            </tr>
+                          <% }); %>
+                        </tbody>
+                        <tfoot class="table-light">
+                          <tr>
+                            <td colspan="2"><strong>합계</strong></td>
+                            <td class="text-end"><strong><%= games.reduce((sum, game) => sum + game.base_points, 0).toLocaleString() %></strong></td>
+                            <td class="text-end"><strong><%= games.reduce((sum, game) => sum + game.self_points, 0).toLocaleString() %></strong></td>
+                            <td class="text-end"><strong><%= games.reduce((sum, game) => sum + game.total_points, 0).toLocaleString() %></strong></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <div class="alert alert-warning">
+            <p><i class="bi bi-exclamation-triangle-fill me-2"></i> 표시할 게임 데이터가 없습니다.</p>
+            <% if (userRole === '담당자') { %>
+            <p>담당하고 있는 게임사가 없거나, 아직 데이터가 없습니다. 시스템 관리자에게 문의하세요.</p>
+            <% } else if (userRole === '어드민') { %>
+            <p>홈페이지에서 '데이터 동기화' 버튼을 클릭하여 최신 데이터를 가져오세요.</p>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div> 

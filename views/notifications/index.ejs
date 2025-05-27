@@ -1,0 +1,109 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">알림 설정</h5>
+        <div>
+          <a href="/managers" class="btn btn-sm btn-light me-2">담당자 관리</a>
+          <a href="/notifications/check" class="btn btn-sm btn-light me-2">알림 체크 실행</a>
+          <a href="/notifications/add" class="btn btn-sm btn-light">+ 알림 추가</a>
+        </div>
+      </div>
+      <div class="card-body">
+        <% if (typeof settings !== 'undefined' && settings.length > 0) { %>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>이메일</th>
+                  <th>회사</th>
+                  <th>게임</th>
+                  <th class="text-end">임계값</th>
+                  <th>상태</th>
+                  <th>생성일</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% settings.forEach(setting => { %>
+                  <tr>
+                    <td><%= setting.email %></td>
+                    <td><%= setting.company_name || '모든 회사' %></td>
+                    <td><%= setting.game_name || '모든 게임' %></td>
+                    <td class="text-end"><%= setting.threshold.toLocaleString() %> 포인트</td>
+                    <td>
+                      <% if (setting.is_active) { %>
+                        <span class="badge bg-success">활성</span>
+                      <% } else { %>
+                        <span class="badge bg-secondary">비활성</span>
+                      <% } %>
+                    </td>
+                    <td><%= new Date(setting.created_at).toLocaleString() %></td>
+                    <td class="text-end">
+                      <a href="/notifications/edit/<%= setting.id %>" class="btn btn-sm btn-outline-primary">수정</a>
+                      <a href="/notifications/delete/<%= setting.id %>" class="btn btn-sm btn-outline-danger" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</a>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="alert alert-info">
+            <p>등록된 알림 설정이 없습니다. '알림 추가' 버튼을 클릭하여 새 알림을 설정하세요.</p>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if (typeof history !== 'undefined' && history.length > 0) { %>
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">알림 이력</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>알림 메시지</th>
+                  <th>이메일</th>
+                  <th>발송 시간</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% history.forEach(item => { %>
+                  <tr>
+                    <td><%= item.message %></td>
+                    <td><%= item.email %></td>
+                    <td><%= new Date(item.sent_at).toLocaleString() %></td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('added') === 'true') {
+      showAlert('알림 설정이 추가되었습니다.', 'success');
+    } else if (urlParams.get('updated') === 'true') {
+      showAlert('알림 설정이 수정되었습니다.', 'success');
+    } else if (urlParams.get('deleted') === 'true') {
+      showAlert('알림 설정이 삭제되었습니다.', 'success');
+    } else if (urlParams.get('checked') === 'true') {
+      showAlert('알림 확인이 실행되었습니다.', 'success');
+    }
+  });
+</script> 

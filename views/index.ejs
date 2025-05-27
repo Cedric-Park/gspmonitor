@@ -1,0 +1,335 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow">
+      <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #4A568D;">
+        <div>
+          <h5 class="mb-0">게임사별 포인트 현황 <span class="badge bg-light ms-2" style="color: #4A568D;">총 <%= companyPoints.length %>개 게임사</span></h5>
+          <% if (typeof syncInfo !== 'undefined') { %>
+            <div class="mt-1 small">
+              <span class="badge bg-light text-dark me-2">
+                <i class="bi bi-clock-history"></i> 마지막 동기화: <%= syncInfo.lastSync %>
+              </span>
+              <span class="badge bg-light text-dark">
+                <i class="bi bi-hourglass-split"></i> 다음 동기화까지: <%= syncInfo.remainingMinutes %>분
+              </span>
+            </div>
+          <% } %>
+        </div>
+        <% if (user && user.role === '어드민') { %>
+        <a href="/sync" class="btn btn-light btn-sm">데이터 동기화</a>
+        <% } %>
+      </div>
+      <div class="card-body">
+        <% if (user && user.role === '담당자') { %>
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle-fill me-2"></i> 현재 사용자의 역할은 <strong>담당자</strong>입니다. 담당하고 있는 게임사의 포인트 정보만 표시됩니다.
+        </div>
+        <% } else if (user && user.role === '매니저') { %>
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle-fill me-2"></i> 현재 사용자의 역할은 <strong>매니저</strong>입니다. 모든 게임사의 포인트 정보를 확인할 수 있습니다.
+        </div>
+        <% } %>
+        
+        <% if (typeof gamesWithCategoryUsage !== 'undefined' && gamesWithCategoryUsage.length > 0) { %>
+          <div class="row">
+            <% gamesWithCategoryUsage.forEach(game => { %>
+              <div class="col-lg-6 col-xl-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                  <div class="card-header text-white" style="background-color: #4A568D;">
+                    <h6 class="mb-0 fw-bold"><%= game.companyName %></h6>
+                    <small style="opacity: 0.75;"><%= game.gameName %></small>
+                  </div>
+                  <div class="card-body">
+                    <!-- 사용량 요약 -->
+                    <div class="row text-center mb-3">
+                      <div class="col-4">
+                        <div class="border-end">
+                          <h5 class="text-primary mb-0"><%= (game.totalPoints / 1000000).toFixed(0) %>M</h5>
+                          <small class="text-muted">총 포인트</small>
+                        </div>
+                      </div>
+                      <div class="col-4">
+                        <div class="border-end">
+                          <h5 class="text-danger mb-0"><%= (game.pointsUsed.total / 1000000).toFixed(0) %>M</h5>
+                          <small class="text-muted">사용</small>
+                        </div>
+                      </div>
+                      <div class="col-4">
+                        <h5 class="text-success mb-0"><%= (game.remainingPoints.total / 1000000).toFixed(0) %>M</h5>
+                        <small class="text-muted">잔여</small>
+                      </div>
+                    </div>
+
+                    <!-- 사용률 프로그레스 바 -->
+                    <div class="mb-3">
+                      <% 
+                        const usagePercent = game.totalPoints > 0 ? (game.pointsUsed.total / game.totalPoints * 100) : 0;
+                        let progressColor = '#5A8A5A';
+                        if (usagePercent > 75) progressColor = '#B85450';
+                        else if (usagePercent > 50) progressColor = '#C8A869';
+                      %>
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">사용률</small>
+                        <small class="fw-bold"><%= usagePercent.toFixed(1) %>%</small>
+                      </div>
+                      <div class="progress" style="height: 8px;">
+                        <div class="progress-bar" style="width: <%= usagePercent %>%; background-color: <%= progressColor %>;"></div>
+                      </div>
+                    </div>
+
+                    <!-- 서비스 부문별 분포 -->
+                    <% if (game.categoryUsage && Object.keys(game.categoryUsage).some(cat => game.categoryUsage[cat].totalUsed > 0)) { %>
+                      <div class="mt-3">
+                        <h6 class="text-muted mb-2 border-bottom pb-1">서비스 부문별 사용</h6>
+                        <% 
+                          const serviceCategories = ['게임 서비스', '마케팅', '인프라', '컨설팅'];
+                          const categoryColors = {
+                            '게임 서비스': '#4A568D',
+                            '마케팅': '#5A8A5A', 
+                            '인프라': '#C8A869',
+                            '컨설팅': '#6B9BD2'
+                          };
+                        %>
+                        <% serviceCategories.forEach(category => { %>
+                          <% if (game.categoryUsage[category] && game.categoryUsage[category].totalUsed > 0) { %>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <span class="badge text-white me-2" style="background-color: <%= categoryColors[category] %>;"><%= category %></span>
+                              <small class="fw-bold"><%= (game.categoryUsage[category].totalUsed / 1000000).toFixed(1) %>M원</small>
+                            </div>
+                          <% } %>
+                        <% }); %>
+                        
+                        <!-- 기타 카테고리 표시 -->
+                        <% Object.keys(game.categoryUsage).forEach(category => { %>
+                          <% if (!serviceCategories.includes(category) && game.categoryUsage[category].totalUsed > 0) { %>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <span class="badge text-white me-2" style="background-color: #7A7A7A;"><%= category %></span>
+                              <small class="fw-bold"><%= (game.categoryUsage[category].totalUsed / 1000000).toFixed(1) %>M원</small>
+                            </div>
+                          <% } %>
+                        <% }); %>
+                      </div>
+                    <% } else { %>
+                      <div class="text-center text-muted mt-3">
+                        <i class="bi bi-info-circle"></i>
+                        <small>아직 포인트 사용 내역이 없습니다</small>
+                      </div>
+                    <% } %>
+
+                    <!-- 배정 포인트 정보 (작게) -->
+                    <div class="mt-3 pt-2 border-top">
+                      <small class="text-muted">
+                        배정: 기본 <%= (game.basePoints / 1000000).toFixed(0) %>M + 자부담 <%= (game.selfPoints / 1000000).toFixed(0) %>M
+                      </small>
+                    </div>
+                  </div>
+                  <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <% if (companyContractStatus && companyContractStatus[game.companyName]) { %>
+                        <span class="badge bg-success" title="계약 정보 있음"><i class="bi bi-check"></i> 계약 있음</span>
+                      <% } else { %>
+                        <span class="badge bg-secondary" title="계약 정보 없음"><i class="bi bi-x"></i> 계약 없음</span>
+                      <% } %>
+                      <a href="/games/company/<%= game.companyName %>" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-arrow-right"></i> 상세보기
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <div class="alert alert-warning">
+            <p><i class="bi bi-exclamation-triangle-fill me-2"></i> 표시할 데이터가 없습니다.</p>
+            <% if (user && user.role === '담당자') { %>
+            <p>담당하고 있는 게임사가 없거나, 아직 데이터가 없습니다. 시스템 관리자에게 문의하세요.</p>
+            <% } else if (user && user.role === '어드민') { %>
+            <p>'데이터 동기화' 버튼을 클릭하여 최신 데이터를 가져오세요.</p>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 전체 통계 요약 -->
+<% if (typeof gamesWithCategoryUsage !== 'undefined' && gamesWithCategoryUsage.length > 0) { %>
+  <% 
+    // 전체 통계 계산
+    let totalAllocated = 0;
+    let totalUsed = 0;
+    let categoryTotals = {
+      '게임 서비스': 0,
+      '마케팅': 0,
+      '인프라': 0,
+      '컨설팅': 0,
+      '기타': 0
+    };
+    
+    gamesWithCategoryUsage.forEach(game => {
+      totalAllocated += game.totalPoints;
+      totalUsed += game.pointsUsed.total;
+      
+      Object.keys(game.categoryUsage).forEach(category => {
+        if (['게임 서비스', '마케팅', '인프라', '컨설팅'].includes(category)) {
+          categoryTotals[category] += game.categoryUsage[category].totalUsed;
+        } else if (game.categoryUsage[category].totalUsed > 0) {
+          categoryTotals['기타'] += game.categoryUsage[category].totalUsed;
+        }
+      });
+    });
+    
+    const totalRemaining = totalAllocated - totalUsed;
+    const usageRate = totalAllocated > 0 ? (totalUsed / totalAllocated * 100) : 0;
+  %>
+  
+  <div class="row mb-4">
+    <div class="col-md-3 mb-3">
+      <div class="card text-white h-100" style="background-color: #4A568D;">
+        <div class="card-body text-center">
+          <h3 class="mb-1"><%= (totalAllocated / 1000000).toFixed(0) %>M</h3>
+          <small>총 배정 포인트</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card text-white h-100" style="background-color: #B85450;">
+        <div class="card-body text-center">
+          <h3 class="mb-1"><%= (totalUsed / 1000000).toFixed(0) %>M</h3>
+          <small>총 사용 포인트</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card text-white h-100" style="background-color: #5A8A5A;">
+        <div class="card-body text-center">
+          <h3 class="mb-1"><%= (totalRemaining / 1000000).toFixed(0) %>M</h3>
+          <small>총 잔여 포인트</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card text-white h-100" style="background-color: #C8A869;">
+        <div class="card-body text-center">
+          <h3 class="mb-1"><%= usageRate.toFixed(1) %>%</h3>
+          <small>전체 사용률</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-4">
+      <div class="card shadow h-100">
+        <div class="card-header text-white" style="background-color: #6B9BD2;">
+          <h5 class="mb-0">서비스 부문별 포인트 사용량</h5>
+        </div>
+        <div class="card-body d-flex align-items-center justify-content-center">
+          <canvas id="serviceCategoryChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card shadow h-100">
+        <div class="card-header text-white" style="background-color: #7A7A7A;">
+          <h5 class="mb-0">게임사별 사용률</h5>
+        </div>
+        <div class="card-body d-flex align-items-center justify-content-center">
+          <canvas id="usageRateChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 서비스 부문별 차트
+    const serviceCategoryData = {
+      labels: Object.keys(categoryTotals).filter(cat => categoryTotals[cat] > 0),
+      datasets: [{
+        data: Object.keys(categoryTotals).filter(cat => categoryTotals[cat] > 0).map(cat => categoryTotals[cat]),
+        backgroundColor: [
+          'rgba(74, 86, 141, 0.8)',    // 게임 서비스 - #4A568D
+          'rgba(90, 138, 90, 0.8)',    // 마케팅 - #5A8A5A  
+          'rgba(200, 168, 105, 0.8)',  // 인프라 - #C8A869
+          'rgba(107, 155, 210, 0.8)',  // 컨설팅 - #6B9BD2
+          'rgba(122, 122, 122, 0.8)'   // 기타 - #7A7A7A
+        ],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    };
+
+    const serviceCategoryCtx = document.getElementById('serviceCategoryChart').getContext('2d');
+    new Chart(serviceCategoryCtx, {
+      type: 'doughnut',
+      data: serviceCategoryData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 10,
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const value = (context.parsed / 1000000).toFixed(1);
+                return context.label + ': ' + value + 'M원';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 게임사별 사용률 차트
+    const companies = gamesWithCategoryUsage.map(game => game.companyName);
+    const usageRates = gamesWithCategoryUsage.map(game => 
+      game.totalPoints > 0 ? (game.pointsUsed.total / game.totalPoints * 100) : 0
+    );
+
+    const usageRateCtx = document.getElementById('usageRateChart').getContext('2d');
+    new Chart(usageRateCtx, {
+      type: 'bar',
+      data: {
+        labels: companies,
+        datasets: [{
+          label: '사용률 (%)',
+          data: usageRates,
+          backgroundColor: usageRates.map(rate => {
+            if (rate > 75) return 'rgba(184, 84, 80, 0.8)';      // 위험 - #B85450
+            if (rate > 50) return 'rgba(200, 168, 105, 0.8)';    // 주의 - #C8A869  
+            return 'rgba(90, 138, 90, 0.8)';                     // 안전 - #5A8A5A
+          }),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            ticks: {
+              callback: function(value) {
+                return value + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+  </script>
+<% } %> 

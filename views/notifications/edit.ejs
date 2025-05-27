@@ -1,0 +1,117 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">알림 설정 수정</h5>
+      </div>
+      <div class="card-body">
+        <form action="/notifications/edit/<%= setting.id %>" method="POST">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="email" class="form-label">이메일 주소 <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="email" name="email" required value="<%= setting.email %>" placeholder="알림을 받을 이메일 주소">
+                <div class="form-text">알림이 이 이메일 주소로 발송됩니다.</div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="company_name" class="form-label">게임사</label>
+                <select class="form-select" id="company_name" name="company_name">
+                  <option value="">모든 회사</option>
+                  <% companies.forEach(company => { %>
+                    <option value="<%= company %>" <%= setting.company_name === company ? 'selected' : '' %>><%= company %></option>
+                  <% }); %>
+                </select>
+                <div class="form-text">특정 게임사만 모니터링하려면 선택하세요.</div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="game_name" class="form-label">게임</label>
+                <select class="form-select" id="game_name" name="game_name">
+                  <option value="">모든 게임</option>
+                  <% games.forEach(game => { %>
+                    <option value="<%= game.game_name %>" 
+                      data-company="<%= game.company_name %>" 
+                      <%= setting.game_name === game.game_name ? 'selected' : '' %>>
+                      <%= game.game_name %>
+                    </option>
+                  <% }); %>
+                </select>
+                <div class="form-text">특정 게임만 모니터링하려면 선택하세요.</div>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="threshold" class="form-label">포인트 임계값</label>
+                <input type="number" class="form-control" id="threshold" name="threshold" value="<%= setting.threshold %>" min="0">
+                <div class="form-text">총 포인트가 이 값 이하로 떨어지면 알림이 발송됩니다.</div>
+              </div>
+              
+              <div class="mb-3">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" role="switch" id="is_active" name="is_active" <%= setting.is_active ? 'checked' : '' %>>
+                  <label class="form-check-label" for="is_active">알림 활성화</label>
+                </div>
+                <div class="form-text">알림 발송을 일시적으로 중지하려면 체크를 해제하세요.</div>
+              </div>
+              
+              <div class="mb-4">
+                <div class="alert alert-info">
+                  <h6 class="alert-heading">알림 설정 안내</h6>
+                  <p class="mb-0">포인트가 설정한 임계값 이하로 떨어질 경우 알림이 발송됩니다. 회사와 게임을 모두 선택하지 않으면 모든 게임에 대해 알림이 발송됩니다.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="d-flex justify-content-between">
+            <a href="/notifications" class="btn btn-outline-secondary">취소</a>
+            <button type="submit" class="btn btn-primary">알림 설정 저장</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const companySelect = document.getElementById('company_name');
+    const gameSelect = document.getElementById('game_name');
+    const gameOptions = Array.from(gameSelect.options);
+    const currentGame = gameSelect.value;
+    
+    // 회사 선택 시 게임 목록 필터링
+    companySelect.addEventListener('change', function() {
+      const selectedCompany = this.value;
+      
+      // 게임 선택 초기화
+      gameSelect.innerHTML = '<option value="">모든 게임</option>';
+      
+      // 선택된 회사와 관련된 게임만 추가
+      if (selectedCompany) {
+        gameOptions.forEach(option => {
+          if (option.dataset.company === selectedCompany) {
+            gameSelect.appendChild(option.cloneNode(true));
+          }
+        });
+      } else {
+        // 회사를 선택하지 않은 경우 모든 게임 표시
+        gameOptions.forEach(option => {
+          if (option.value !== '') {
+            gameSelect.appendChild(option.cloneNode(true));
+          }
+        });
+      }
+      
+      // 이전에 선택된 게임이 있다면 다시 선택
+      if (currentGame) {
+        const newOption = Array.from(gameSelect.options).find(o => o.value === currentGame);
+        if (newOption) {
+          newOption.selected = true;
+        }
+      }
+    });
+  });
+</script> 

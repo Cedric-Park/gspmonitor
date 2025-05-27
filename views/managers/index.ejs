@@ -1,0 +1,391 @@
+<!-- 상태 메시지 -->
+<% if (typeof query !== 'undefined' && query.added) { %>
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>담당자가 추가되었습니다.</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+<% } else if (typeof query !== 'undefined' && query.mapped) { %>
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>회사와 담당자가 매핑되었습니다.</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+<% } else if (typeof query !== 'undefined' && query.initialized) { %>
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>샘플 담당자 데이터가 초기화되었습니다.</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+<% } else if (typeof query !== 'undefined' && query.deleted_mapping) { %>
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>담당자-게임사 매핑이 삭제되었습니다.</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+<% } else if (typeof query !== 'undefined' && query.role_updated) { %>
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>담당자 권한이 변경되었습니다.</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+<% } %>
+
+<div class="row mb-4">
+  <div class="col-lg-6">
+    <!-- 담당자 추가 카드 -->
+    <div class="card shadow mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">담당자 추가</h5>
+      </div>
+      <div class="card-body">
+        <form action="/managers/add" method="POST">
+          <div class="mb-3">
+            <label for="name" class="form-label">이름 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="name" name="name" required placeholder="담당자 이름">
+          </div>
+          
+          <div class="mb-3">
+            <label for="email" class="form-label">이메일 <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="email" name="email" required placeholder="담당자 이메일">
+            <div class="form-text">알림 발송에 사용될 이메일 주소입니다.</div>
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">담당자 추가</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- 회사-담당자 매핑 카드 -->
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">게임사-담당자 매핑</h5>
+      </div>
+      <div class="card-body">
+        <form action="/managers/mapping" method="POST">
+          <div class="mb-3">
+            <label for="company_name" class="form-label">게임사 <span class="text-danger">*</span></label>
+            <select class="form-select" id="company_name" name="company_name" required>
+              <option value="">게임사 선택</option>
+              <% 
+                // 이미 매핑된 게임사 목록 생성
+                const mappedCompanies = [];
+                mappings.forEach(mapping => {
+                  if (!mappedCompanies.includes(mapping.company_name)) {
+                    mappedCompanies.push(mapping.company_name);
+                  }
+                });
+                
+                // 매핑되지 않은 게임사만 드롭다운에 표시
+                companies.forEach(company => {
+                  if (!mappedCompanies.includes(company)) {
+              %>
+                <option value="<%= company %>"><%= company %></option>
+              <% 
+                  }
+                });
+              %>
+            </select>
+            <div class="form-text">아직 담당자가 지정되지 않은 게임사만 표시됩니다.</div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="manager_id" class="form-label">담당자 <span class="text-danger">*</span></label>
+            <select class="form-select" id="manager_id" name="manager_id" required>
+              <option value="">담당자 선택</option>
+              <% managers.forEach(manager => { %>
+                <option value="<%= manager.id %>"><%= manager.name %> (<%= manager.email %>)</option>
+              <% }); %>
+            </select>
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">매핑 추가</button>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer">
+        <form action="/managers/initialize" method="POST" class="d-inline">
+          <button type="submit" class="btn btn-sm btn-outline-secondary">샘플 데이터 초기화</button>
+        </form>
+        <div class="form-text mt-2">샘플 데이터를 로드하여 테스트할 수 있습니다.</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-6">
+    <!-- 담당자 목록 카드 -->
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">담당자 목록</h5>
+      </div>
+      <div class="card-body">
+        <% if (managers.length === 0) { %>
+          <div class="alert alert-info mb-0">
+            등록된 담당자가 없습니다. 새 담당자를 추가해주세요.
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>이름</th>
+                  <th>이메일</th>
+                  <th>권한</th>
+                  <th>담당 게임사</th>
+                  <% if (user && user.role === '어드민') { %>
+                  <th>권한 관리</th>
+                  <% } %>
+                </tr>
+              </thead>
+              <tbody>
+                <% managers.forEach(manager => { %>
+                  <tr>
+                    <td><%= manager.name %></td>
+                    <td><%= manager.email %></td>
+                    <td>
+                      <% if (manager.role) { %>
+                        <span class="badge bg-<%= manager.role === '어드민' ? 'danger' : (manager.role === '매니저' ? 'warning' : 'success') %>">
+                          <%= manager.role %>
+                        </span>
+                      <% } else { %>
+                        <span class="badge bg-success">담당자</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <button 
+                        class="btn btn-sm btn-outline-primary view-companies" 
+                        data-manager-id="<%= manager.id %>"
+                        data-manager-name="<%= manager.name %>"
+                      >
+                        담당 게임사 보기
+                      </button>
+                    </td>
+                    <% if (user && user.role === '어드민') { %>
+                    <td>
+                      <button 
+                        class="btn btn-sm btn-outline-secondary change-role" 
+                        data-manager-id="<%= manager.id %>"
+                        data-manager-name="<%= manager.name %>"
+                        data-manager-role="<%= manager.role || '담당자' %>"
+                      >
+                        권한 변경
+                      </button>
+                    </td>
+                    <% } %>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </div>
+    
+    <!-- 게임사별 담당자 목록 카드 -->
+    <div class="card shadow mt-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">게임사별 담당자</h5>
+      </div>
+      <div class="card-body">
+        <% if (mappings.length === 0) { %>
+          <div class="alert alert-info mb-0">
+            등록된 게임사-담당자 매핑이 없습니다.
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>게임사</th>
+                  <th>담당자</th>
+                  <th>이메일</th>
+                  <th>관리</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% 
+                // 게임사별로 그룹화
+                const groupedMappings = {};
+                mappings.forEach(mapping => {
+                  if (!groupedMappings[mapping.company_name]) {
+                    groupedMappings[mapping.company_name] = [];
+                  }
+                  groupedMappings[mapping.company_name].push(mapping);
+                });
+                
+                // 그룹화된 매핑 출력
+                Object.keys(groupedMappings).sort().forEach(company => {
+                  const companyMappings = groupedMappings[company];
+                  companyMappings.forEach((mapping, index) => {
+                %>
+                  <tr>
+                    <% if (index === 0) { %>
+                      <td rowspan="<%= companyMappings.length %>"><%= company %></td>
+                    <% } %>
+                    <td><%= mapping.manager_name %></td>
+                    <td><%= mapping.email %></td>
+                    <td>
+                      <form action="/managers/mapping/delete" method="POST" style="display: inline-block;">
+                        <input type="hidden" name="company_name" value="<%= mapping.company_name %>">
+                        <input type="hidden" name="manager_id" value="<%= mapping.manager_id || mapping.id %>">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('정말 이 매핑을 삭제하시겠습니까?')">
+                          삭제
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                <% 
+                  });
+                });
+                %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 담당 게임사 모달 -->
+<div class="modal fade" id="companiesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="companiesModalTitle">담당 게임사</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="companiesSpinner" class="text-center">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">로딩 중...</span>
+          </div>
+        </div>
+        <div id="companiesList"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 권한 변경 모달 -->
+<div class="modal fade" id="roleModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="roleModalTitle">담당자 권한 변경</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="roleForm" action="/managers/role" method="POST">
+          <input type="hidden" id="manager_id_role" name="manager_id">
+          
+          <div class="mb-3">
+            <label for="manager_name_role" class="form-label">담당자</label>
+            <input type="text" class="form-control" id="manager_name_role" readonly>
+          </div>
+          
+          <div class="mb-3">
+            <label for="role" class="form-label">권한</label>
+            <select class="form-select" id="role" name="role" required>
+              <option value="담당자">담당자</option>
+              <option value="매니저">매니저</option>
+              <option value="어드민">어드민</option>
+            </select>
+          </div>
+          
+          <div class="alert alert-warning">
+            <strong>주의!</strong> 어드민 권한은 시스템의 모든 기능에 접근할 수 있습니다.
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">권한 변경</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 담당 게임사 버튼 클릭 이벤트
+    const viewCompaniesButtons = document.querySelectorAll('.view-companies');
+    const companiesModal = new bootstrap.Modal(document.getElementById('companiesModal'));
+    const companiesModalTitle = document.getElementById('companiesModalTitle');
+    const companiesSpinner = document.getElementById('companiesSpinner');
+    const companiesList = document.getElementById('companiesList');
+    
+    viewCompaniesButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const managerId = this.dataset.managerId;
+        const managerName = this.dataset.managerName;
+        
+        // 모달 초기화
+        companiesModalTitle.textContent = `${managerName} 담당 게임사`;
+        companiesSpinner.style.display = 'block';
+        companiesList.innerHTML = '';
+        companiesModal.show();
+        
+        // 담당 게임사 정보 가져오기
+        fetch(`/managers/api/${managerId}`)
+          .then(response => response.json())
+          .then(data => {
+            companiesSpinner.style.display = 'none';
+            
+            if (data.success && data.companies.length > 0) {
+              const companiesHtml = `
+                <ul class="list-group">
+                  ${data.companies.map(company => `
+                    <li class="list-group-item">${company}</li>
+                  `).join('')}
+                </ul>
+              `;
+              companiesList.innerHTML = companiesHtml;
+            } else {
+              companiesList.innerHTML = `
+                <div class="alert alert-info">
+                  담당하고 있는 게임사가 없습니다.
+                </div>
+              `;
+            }
+          })
+          .catch(error => {
+            console.error('담당 게임사 정보 불러오기 오류:', error);
+            companiesSpinner.style.display = 'none';
+            companiesList.innerHTML = `
+              <div class="alert alert-danger">
+                정보를 불러오는 중 오류가 발생했습니다.
+              </div>
+            `;
+          });
+      });
+    });
+    
+    // 권한 변경 버튼 클릭 이벤트
+    const changeRoleButtons = document.querySelectorAll('.change-role');
+    const roleModal = new bootstrap.Modal(document.getElementById('roleModal'));
+    
+    changeRoleButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const managerId = this.getAttribute('data-manager-id');
+        const managerName = this.getAttribute('data-manager-name');
+        const managerRole = this.getAttribute('data-manager-role');
+        
+        document.getElementById('manager_id_role').value = managerId;
+        document.getElementById('manager_name_role').value = managerName;
+        
+        // 현재 권한으로 선택 상태 설정
+        const roleSelect = document.getElementById('role');
+        for (let i = 0; i < roleSelect.options.length; i++) {
+          if (roleSelect.options[i].value === managerRole) {
+            roleSelect.selectedIndex = i;
+            break;
+          }
+        }
+        
+        roleModal.show();
+      });
+    });
+  });
+</script> 

@@ -1,0 +1,627 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><%= companyName %> 게임 포인트 현황</h5>
+      </div>
+      <div class="card-body">
+        <% if (userRole === '담당자') { %>
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle-fill me-2"></i> 현재 사용자의 역할은 <strong>담당자</strong>입니다. 담당하고 있는 게임사의 상세 정보를 확인할 수 있습니다.
+        </div>
+        <% } %>
+        
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title text-center mb-4">포인트 현황</h5>
+                
+                <!-- 포인트 사용량 진행률 바 -->
+                <div class="mb-4">
+                  <% 
+                    const totalAvailable = totalBasePoints + totalSelfPoints;
+                    const totalUsed = totalUsageData ? totalUsageData.total : 0;
+                    const usagePercent = totalAvailable > 0 ? (totalUsed / totalAvailable * 100) : 0;
+                    let progressClass = 'bg-success';
+                    if (usagePercent > 80) progressClass = 'bg-danger';
+                    else if (usagePercent > 60) progressClass = 'bg-warning';
+                    const remainingPoints = totalAvailable - totalUsed;
+                  %>
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">전체 사용률</h6>
+                    <small class="text-muted">
+                      <%= totalUsed.toLocaleString() %>원 / <%= totalAvailable.toLocaleString() %>원
+                    </small>
+                  </div>
+                  <div class="progress mb-2" style="height: 12px;">
+                    <div class="progress-bar <%= progressClass %>" 
+                         style="width: <%= Math.min(usagePercent, 100) %>%;"
+                         aria-valuenow="<%= usagePercent %>" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                      <%= usagePercent.toFixed(1) %>%
+                    </div>
+                  </div>
+                  <div class="text-center">
+                    <span class="badge bg-info">
+                      남은 포인트: <%= remainingPoints.toLocaleString() %>원
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 포인트 상세 정보 -->
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="card bg-light">
+                      <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2 text-muted">기본 포인트</h6>
+                        <h4 class="card-text"><%= totalBasePoints.toLocaleString() %>원</h4>
+                        <% if (totalUsageData && totalUsageData.base > 0) { %>
+                        <small class="text-muted">사용: <%= totalUsageData.base.toLocaleString() %>원</small>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="card bg-light">
+                      <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2 text-muted">자부담 포인트</h6>
+                        <h4 class="card-text"><%= totalSelfPoints.toLocaleString() %>원</h4>
+                        <% if (totalUsageData && totalUsageData.self > 0) { %>
+                        <small class="text-muted">사용: <%= totalUsageData.self.toLocaleString() %>원</small>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                      <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2">총 포인트</h6>
+                        <h4 class="card-text"><%= totalPoints.toLocaleString() %>원</h4>
+                        <small>사용 가능</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <canvas id="companyPointsChart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>게임명</th>
+                <th>플랫폼</th>
+                <th class="text-end">기본 포인트</th>
+                <th class="text-end">자부담 포인트</th>
+                <th class="text-end">총 포인트</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% games.forEach(game => { %>
+                <tr>
+                  <td><%= game.game_name %></td>
+                  <td>
+                    <% 
+                      let badgeClass = "bg-secondary";
+                      const platform = game.platform.toLowerCase();
+                      if (platform.includes('모바일')) {
+                        badgeClass = "bg-primary";
+                      } else if (platform.includes('pc') || platform.includes('vr') || platform.includes('콘솔')) {
+                        badgeClass = "bg-danger";
+                      } else if (platform.includes('웹')) {
+                        badgeClass = "bg-success";
+                      }
+                    %>
+                    <span class="badge <%= badgeClass %>"><%= game.platform %></span>
+                  </td>
+                  <td class="text-end"><%= game.base_points.toLocaleString() %></td>
+                  <td class="text-end"><%= game.self_points.toLocaleString() %></td>
+                  <td class="text-end"><strong><%= game.total_points.toLocaleString() %></strong></td>
+                </tr>
+              <% }); %>
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="2"><strong>합계</strong></td>
+                <td class="text-end"><strong><%= totalBasePoints.toLocaleString() %></strong></td>
+                <td class="text-end"><strong><%= totalSelfPoints.toLocaleString() %></strong></td>
+                <td class="text-end"><strong><%= totalPoints.toLocaleString() %></strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 계약 정보 섹션 추가 -->
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><%= companyName %> 진행 중인 계약 정보</h5>
+      </div>
+      <div class="card-body">
+        <% if (contracts && contracts.length > 0) { %>
+          <!-- 필터링 컨트롤 추가 -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="input-group">
+                <label class="input-group-text" for="statusFilter">진행상황 필터</label>
+                <select class="form-select" id="statusFilter">
+                  <option value="all" selected>모든 상태</option>
+                  <% contractStatusList.forEach(status => { %>
+                    <option value="<%= status %>"><%= status %></option>
+                  <% }); %>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <!-- 계약 상태 분포 시각화 -->
+              <canvas id="contractStatusChart" height="100"></canvas>
+            </div>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="table table-hover table-sm contract-table" id="contractsTable">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 5%;">번호</th>
+                  <th style="width: 8%;">서비스 부문</th>
+                  <th style="width: 12%;">상세 서비스 항목</th>
+                  <th style="width: 15%;">서비스 요청명</th>
+                  <th style="width: 6%;">견적서 제출 건</th>
+                  <th style="width: 8%;">입찰 마감일</th>
+                  <th style="width: 8%;">선정 마감일</th>
+                  <th style="width: 8%;">진행상황</th>
+                  <th style="width: 10%;">선정 협력사</th>
+                  <th style="width: 10%;">계약금액</th>
+                  <th style="width: 6%;">업무상태</th>
+                  <% if (userRole === '어드민' || userRole === '매니저') { %>
+                  <th style="width: 8%;" class="text-center">자부담 포인트</th>
+                  <% } %>
+                  <th style="width: 4%;" class="text-center">견적서제출현황</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% contracts.forEach((contract, index) => { %>
+                  <tr data-status="<%= contract.status %>">
+                    <td><%= contract.contract_id %></td>
+                    <td class="text-truncate" style="max-width: 100px;" title="<%= contract.service_category %>"><%= contract.service_category %></td>
+                    <td class="text-truncate" style="max-width: 150px;" title="<%= contract.service_detail %>"><%= contract.service_detail %></td>
+                    <td class="text-truncate" style="max-width: 200px;" title="<%= contract.service_request %>"><%= contract.service_request %></td>
+                    <td><%= contract.quote_count %></td>
+                    <td><%= contract.bid_deadline %></td>
+                    <td><%= contract.selection_deadline %></td>
+                    <td>
+                      <span class="badge <%= 
+                        contract.status === '견적요청' ? 'bg-primary' : 
+                        contract.status === '견적서 제출' ? 'bg-success' : 
+                        contract.status === '선정완료' ? 'bg-warning' : 
+                        contract.status === '계약완료' ? 'bg-info' : 'bg-secondary' 
+                      %>">
+                        <%= contract.status %>
+                      </span>
+                    </td>
+                    <td>
+                      <%= contract.selected_vendor ? contract.selected_vendor : '-' %>
+                    </td>
+                    <td>
+                      <% if (contract.contract_amount && contract.contract_amount.trim() !== '') { %>
+                        <% 
+                          // 계약금액 포맷팅
+                          let formattedAmount = contract.contract_amount;
+                          // 숫자 부분 추출 및 콤마 추가
+                          const amountMatch = formattedAmount.match(/[\d,]+/);
+                          if (amountMatch) {
+                            const numberPart = amountMatch[0].replace(/,/g, '');
+                            if (!isNaN(numberPart)) {
+                              const formatted = Number(numberPart).toLocaleString('ko-KR');
+                              formattedAmount = formattedAmount.replace(amountMatch[0], formatted);
+                            }
+                          }
+                        %>
+                        <%= formattedAmount %>
+                      <% } else { %>
+                        -
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (contract.work_status && contract.work_status.trim() !== '') { %>
+                        <span class="badge <%= 
+                          contract.work_status === '예정' ? 'bg-info' : 
+                          contract.work_status === '진행 중' ? 'bg-success' : 
+                          contract.work_status === '업무 종료' ? 'bg-secondary' : 'bg-light text-dark' 
+                        %>">
+                          <%= contract.work_status %>
+                        </span>
+                      <% } else { %>
+                        -
+                      <% } %>
+                    </td>
+                    <% if (userRole === '어드민' || userRole === '매니저') { %>
+                    <td class="text-center">
+                      <% if (contract.contract_amount && contract.selected_vendor) { %>
+                        <div class="form-check form-switch d-inline-block">
+                          <input class="form-check-input" 
+                                 type="checkbox" 
+                                 id="pointSwitch<%= contract.contract_id %>"
+                                 data-contract-id="<%= contract.contract_id %>"
+                                 <%= contract.use_self_points ? 'checked' : '' %>
+                                 onchange="togglePointUsage(this)">
+                          <label class="form-check-label" for="pointSwitch<%= contract.contract_id %>">
+                            자부담 우선
+                          </label>
+                        </div>
+                        <% if (contract.contract_amount) { %>
+                        <div class="mt-1">
+                          <small class="<%= contract.use_self_points ? 'text-primary' : 'text-secondary' %>">
+                            <%= contract.use_self_points ? '자부담+기본' : '기본만' %>
+                          </small>
+                        </div>
+                        <% } %>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
+                    <% } %>
+                    <td class="text-center">
+                      <% if (contract.quote_details && contract.quote_details !== '없음' && contract.quote_details.trim() !== '') { %>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#quoteModal<%= index %>">
+                          보기
+                        </button>
+
+                        <!-- 견적서제출현황 모달 -->
+                        <div class="modal fade" id="quoteModal<%= index %>" tabindex="-1" aria-labelledby="quoteModalLabel<%= index %>" aria-hidden="true">
+                          <div class="modal-dialog modal-xl">
+                            <div class="modal-content">
+                              <div class="modal-header">
+                                <h5 class="modal-title" id="quoteModalLabel<%= index %>">견적서제출현황 - <%= contract.service_request %></h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body">
+                                <div class="card">
+                                  <div class="card-header">
+                                    <h6 class="mb-0">계약 정보</h6>
+                                  </div>
+                                  <div class="card-body">
+                                    <div class="row mb-2">
+                                      <div class="col-md-4"><strong>번호:</strong> <%= contract.contract_id %></div>
+                                      <div class="col-md-4"><strong>서비스 부문:</strong> <%= contract.service_category %></div>
+                                      <div class="col-md-4"><strong>서비스 항목:</strong> <%= contract.service_detail %></div>
+                                    </div>
+                                    <div class="row mb-2">
+                                      <div class="col-md-8"><strong>서비스 요청명:</strong> <%= contract.service_request %></div>
+                                      <div class="col-md-4"><strong>게임사:</strong> <%= contract.company_name %></div>
+                                    </div>
+                                    <% if (contract.selected_vendor || contract.contract_amount) { %>
+                                    <div class="row">
+                                      <div class="col-md-4">
+                                        <strong>선정 협력사:</strong> 
+                                        <%= contract.selected_vendor ? contract.selected_vendor : '미확정' %>
+                                      </div>
+                                      <div class="col-md-4">
+                                        <strong>계약금액:</strong> 
+                                        <% if (contract.contract_amount && contract.contract_amount.trim() !== '') { %>
+                                          <% 
+                                            let formattedAmount = contract.contract_amount;
+                                            const amountMatch = formattedAmount.match(/[\d,]+/);
+                                            if (amountMatch) {
+                                              const numberPart = amountMatch[0].replace(/,/g, '');
+                                              if (!isNaN(numberPart)) {
+                                                const formatted = Number(numberPart).toLocaleString('ko-KR');
+                                                formattedAmount = formattedAmount.replace(amountMatch[0], formatted);
+                                              }
+                                            }
+                                          %>
+                                          <%= formattedAmount %>
+                                        <% } else { %>
+                                          미확정
+                                        <% } %>
+                                      </div>
+                                      <div class="col-md-4">
+                                        <strong>업무상태:</strong> 
+                                        <% if (contract.work_status && contract.work_status.trim() !== '') { %>
+                                          <span class="badge <%= 
+                                            contract.work_status === '예정' ? 'bg-info' : 
+                                            contract.work_status === '진행 중' ? 'bg-success' : 
+                                            contract.work_status === '업무 종료' ? 'bg-secondary' : 'bg-light text-dark' 
+                                          %>">
+                                            <%= contract.work_status %>
+                                          </span>
+                                        <% } else { %>
+                                          -
+                                        <% } %>
+                                      </div>
+                                    </div>
+                                    <% } %>
+                                  </div>
+                                </div>
+                                
+                                <div class="card mt-3">
+                                  <div class="card-header">
+                                    <h6 class="mb-0">견적서 제출 현황</h6>
+                                  </div>
+                                  <div class="card-body">
+                                    <% 
+                                      // 견적서 데이터 처리
+                                      const quoteDetails = contract.quote_details || '';
+                                      
+                                      if (quoteDetails && quoteDetails !== '없음' && quoteDetails.trim() !== '') {
+                                        // 견적서 목록 생성
+                                        const quotes = [];
+                                        
+                                        // 디버깅 정보 - 원본 데이터 출력
+                                        console.log('원본 견적 데이터:', quoteDetails);
+                                        
+                                        // 줄바꿈 문자 처리 (다양한 줄바꿈 문자 대응)
+                                        // \n, \r, \r\n 모두 처리
+                                        const normalizedDetails = quoteDetails.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                                        
+                                        // 디버깅 정보 - 정규화된 데이터 출력
+                                        console.log('정규화된 견적 데이터:', normalizedDetails);
+                                        
+                                        if (normalizedDetails.includes('\n')) {
+                                          // 줄바꿈으로 분리
+                                          const lines = normalizedDetails.split('\n');
+                                          console.log('분리된 견적 라인 수:', lines.length);
+                                          
+                                          lines.forEach((line, i) => {
+                                            if (line.trim()) {
+                                              console.log(`견적 라인 ${i+1}:`, line.trim());
+                                              quotes.push(line.trim());
+                                            }
+                                          });
+                                        } else {
+                                          // 단일 견적서
+                                          quotes.push(normalizedDetails.trim());
+                                        }
+                                        
+                                        console.log('처리된 견적 항목 수:', quotes.length);
+                                    %>
+                                      <div class="table-responsive">
+                                        <table class="table table-bordered table-hover">
+                                          <thead class="table-light">
+                                            <tr>
+                                              <th>협력사명</th>
+                                              <th>견적</th>
+                                              <th>견적일자</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            <% 
+                                              // 각 견적서 항목 처리
+                                              quotes.forEach(quote => {
+                                                // 협력사(금액, 날짜) 형식 추출
+                                                // 금액에 쉼표가 포함될 수 있으므로 마지막 쉼표를 기준으로 분리
+                                                const regex = /(.+?)\((.+),\s*(\d{4}-\d{2}-\d{2})\)/;
+                                                const match = quote.match(regex);
+                                                
+                                                if (match) {
+                                                  const vendor = match[1].trim();
+                                                  const amount = match[2].trim();
+                                                  const date = match[3].trim();
+                                            %>
+                                              <tr>
+                                                <td><%= vendor %></td>
+                                                <td><%= amount %></td>
+                                                <td><%= date %></td>
+                                              </tr>
+                                            <% } else { %>
+                                              <tr>
+                                                <td colspan="3" class="text-center">
+                                                  <%= quote %>
+                                                </td>
+                                              </tr>
+                                            <% }
+                                            }); 
+                                            %>
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    <% } else { %>
+                                      <div class="alert alert-info mb-0">
+                                        <i class="bi bi-info-circle me-2"></i> 제출된 견적서가 없습니다.
+                                      </div>
+                                    <% } %>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      <% } else { %>
+                        <span class="text-muted">없음</span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-3">
+            <p class="text-muted"><small>* 계약 정보는 1시간마다 자동으로 업데이트됩니다. 마지막 업데이트: <%= new Date().toLocaleString('ko-KR') %></small></p>
+          </div>
+        <% } else { %>
+          <div class="alert alert-warning">
+            <p><i class="bi bi-exclamation-triangle-fill me-2"></i> 현재 진행 중인 계약 정보가 없습니다.</p>
+            <% if (userRole === '어드민') { %>
+            <p>홈페이지에서 '데이터 동기화' 버튼을 클릭하여 최신 계약 데이터를 가져오세요.</p>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // 포인트 차트 생성
+  var pointsCtx = document.getElementById('companyPointsChart').getContext('2d');
+  var basePoints = <%= totalBasePoints %>;
+  var selfPoints = <%= totalSelfPoints %>;
+  
+  new Chart(pointsCtx, {
+    type: 'pie',
+    data: {
+      labels: ['기본 포인트', '자부담 포인트'],
+      datasets: [{
+        data: [basePoints, selfPoints],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(153, 102, 255, 0.7)'
+        ],
+        borderColor: [
+          'rgba(75, 192, 192, 1)',
+          'rgba(153, 102, 255, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: {
+        title: {
+          display: true,
+          text: '<%= companyName %> 포인트 분포'
+        },
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+  
+  <% if (contracts && contracts.length > 0) { %>
+  // 계약 상태별 필터링 로직
+  document.getElementById('statusFilter').addEventListener('change', function() {
+    var selectedStatus = this.value;
+    var rows = document.querySelectorAll('#contractsTable tbody tr');
+    
+    rows.forEach(function(row) {
+      var status = row.getAttribute('data-status');
+      if (selectedStatus === 'all' || status === selectedStatus) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  });
+  
+  // 계약 상태 차트 생성
+  var statusCounts = {
+    <% contractStatusList.forEach(status => { %>
+    '<%= status %>': 0,
+    <% }); %>
+    '기타': 0
+  };
+  
+  // 상태별 카운트 계산
+  document.querySelectorAll('#contractsTable tbody tr').forEach(function(row) {
+    var status = row.getAttribute('data-status');
+    if (statusCounts.hasOwnProperty(status)) {
+      statusCounts[status]++;
+    } else {
+      statusCounts['기타']++;
+    }
+  });
+  
+  // 상태별 색상 매핑
+  var statusColors = {
+    '견적요청': 'rgba(13, 110, 253, 0.7)',
+    '견적서 제출': 'rgba(25, 135, 84, 0.7)',
+    '선정완료': 'rgba(255, 193, 7, 0.7)',
+    '계약완료': 'rgba(13, 202, 240, 0.7)',
+    '기타': 'rgba(108, 117, 125, 0.7)'
+  };
+  
+  // 데이터 준비
+  var statuses = Object.keys(statusCounts);
+  var counts = Object.values(statusCounts);
+  var colors = statuses.map(function(status) { 
+    return statusColors[status] || 'rgba(108, 117, 125, 0.7)';
+  });
+  
+  // 계약 상태 차트 생성
+  var statusCtx = document.getElementById('contractStatusChart').getContext('2d');
+  new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+      labels: statuses,
+      datasets: [{
+        data: counts,
+        backgroundColor: colors,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var label = context.label || '';
+              var value = context.raw || 0;
+              var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+              var percentage = Math.round((value / total) * 100);
+              return label + ': ' + value + '건 (' + percentage + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+  <% } %>
+});
+
+// 포인트 사용 토글 함수
+async function togglePointUsage(switchElement) {
+  const contractId = switchElement.dataset.contractId;
+  const usePoints = switchElement.checked;
+  
+  try {
+    switchElement.disabled = true;
+    
+    const response = await fetch(`/points/toggle/${contractId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        usePoints: usePoints
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // 성공시 페이지 새로고침으로 데이터 업데이트
+      location.reload();
+    } else {
+      alert('오류: ' + result.message);
+      // 원래 상태로 되돌리기
+      switchElement.checked = !usePoints;
+    }
+  } catch (error) {
+    alert('포인트 설정 중 오류가 발생했습니다: ' + error.message);
+    switchElement.checked = !usePoints;
+  } finally {
+    switchElement.disabled = false;
+  }
+}
+</script> 

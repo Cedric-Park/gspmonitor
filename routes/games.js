@@ -1,0 +1,124 @@
+const express = require('express');
+const router = express.Router();
+const gameModel = require('../models/game');
+const managerModel = require('../models/manager');
+
+// 모든 게임 목록 가져오기
+router.get('/', async (req, res) => {
+  try {
+    const games = await gameModel.getAllGames();
+    let filteredGames = games;
+    
+    // 사용자 권한에 따라 필터링
+    if (req.session.user.role === '담당자') {
+      // 담당자의 경우 담당하는 게임사만 표시
+      const managerId = req.session.user.id;
+      const userCompanies = await managerModel.getCompaniesByManager(managerId);
+      
+      if (userCompanies && userCompanies.length > 0) {
+        filteredGames = games.filter(game => userCompanies.includes(game.company_name));
+      } else {
+        filteredGames = [];
+      }
+    }
+    
+    // 회사별로 그룹화
+    const gamesByCompany = filteredGames.reduce((acc, game) => {
+      if (!acc[game.company_name]) {
+        acc[game.company_name] = [];
+      }
+      acc[game.company_name].push(game);
+      return acc;
+    }, {});
+    
+    res.render('games', { 
+      title: '게임 목록',
+      gamesByCompany,
+      userRole: req.session.user.role
+    });
+  } catch (error) {
+    console.error('게임 목록 에러:', error);
+    res.status(500).render('error', { 
+      title: '오류 발생',
+      message: '게임 데이터를 가져오는 중 오류가 발생했습니다.',
+      error
+    });
+  }
+});
+
+// 게임사별 게임 목록 가져오기
+router.get('/company/:companyName', async (req, res) => {
+  try {
+    const { companyName } = req.params;
+    
+    // 사용자 권한 확인
+    if (req.session.user.role === '담당자') {
+      // 담당자인 경우 해당 게임사가 본인 담당인지 확인
+      const managerId = req.session.user.id;
+      const userCompanies = await managerModel.getCompaniesByManager(managerId);
+      
+      if (!userCompanies.includes(companyName)) {
+        return res.status(403).render('error', {
+          title: '접근 권한 없음',
+          message: '해당 게임사에 대한 접근 권한이 없습니다.',
+          error: { status: 403 }
+        });
+      }
+    }
+    
+    const games = await gameModel.getAllGames();
+    
+    // 특정 회사의 게임만 필터링
+    const companyGames = games.filter(game => game.company_name === companyName);
+    
+    // 포인트 사용량을 포함한 게임 목록
+    const gamesWithUsage = await gameModel.getAllGamesWithPointUsage();
+    const companyGamesWithUsage = gamesWithUsage.filter(game => game.companyName === companyName);
+    
+    // 총 포인트 계산
+    const totalBasePoints = companyGames.reduce((sum, game) => sum + game.base_points, 0);
+    const totalSelfPoints = companyGames.reduce((sum, game) => sum + game.self_points, 0);
+    const totalPoints = totalBasePoints + totalSelfPoints;
+    
+    // 사용된 포인트 총계 계산
+    const totalUsedPoints = companyGamesWithUsage.reduce((sum, game) => sum + game.pointsUsed.total, 0);
+    const totalUsedSelfPoints = companyGamesWithUsage.reduce((sum, game) => sum + game.pointsUsed.self, 0);
+    const totalUsedBasePoints = companyGamesWithUsage.reduce((sum, game) => sum + game.pointsUsed.base, 0);
+    
+    // 총 사용량 데이터 구조화
+    const totalUsageData = {
+      total: totalUsedPoints,
+      self: totalUsedSelfPoints,
+      base: totalUsedBasePoints
+    };
+    
+    // 해당 게임사의 계약 정보 가져오기
+    const contracts = await gameModel.getContractsByCompany(companyName);
+    
+    // 계약 상태 목록 (필터링용)
+    const contractStatusList = ['견적요청', '견적서 제출', '선정완료', '계약완료'];
+    
+    res.render('company', { 
+      title: `${companyName} 게임 목록`,
+      companyName,
+      games: companyGames,
+      gamesWithUsage: companyGamesWithUsage,
+      contracts,
+      contractStatusList,
+      totalBasePoints,
+      totalSelfPoints,
+      totalPoints,
+      totalUsageData,
+      userRole: req.session.user.role
+    });
+  } catch (error) {
+    console.error('회사별 게임 목록 에러:', error);
+    res.status(500).render('error', { 
+      title: '오류 발생',
+      message: '회사별 게임 데이터를 가져오는 중 오류가 발생했습니다.',
+      error
+    });
+  }
+});
+
+module.exports = router; 

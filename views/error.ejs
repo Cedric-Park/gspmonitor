@@ -1,0 +1,21 @@
+<div class="row">
+  <div class="col-md-12">
+    <div class="card shadow">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><%= title %></h5>
+      </div>
+      <div class="card-body">
+        <p class="lead"><%= message %></p>
+        
+        <% if (process.env.NODE_ENV === 'development' && error) { %>
+          <div class="alert alert-danger">
+            <h4>에러 상세 정보</h4>
+            <pre><%= error.stack %></pre>
+          </div>
+        <% } %>
+        
+        <a href="/" class="btn btn-primary">홈으로 돌아가기</a>
+      </div>
+    </div>
+  </div>
+</div> 
