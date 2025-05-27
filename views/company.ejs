@@ -94,8 +94,8 @@
                 <canvas id="serviceCategoryChart"></canvas>
                 <div class="mt-2 text-center">
                   <small class="text-muted">
-                    <% let totalUsed = 0; Object.keys(serviceCategoryUsage).forEach(category => { totalUsed += serviceCategoryUsage[category].totalUsed; }); %>
-                    총 사용량: <%= totalUsed.toLocaleString() %>원
+                    <% let categoryTotalUsed = 0; Object.keys(serviceCategoryUsage).forEach(category => { categoryTotalUsed += serviceCategoryUsage[category].totalUsed; }); %>
+                    총 사용량: <%= categoryTotalUsed.toLocaleString() %>원
                   </small>
                 </div>
               </div>
