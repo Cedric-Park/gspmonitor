@@ -71,8 +71,8 @@ router.get('/company/:companyName', async (req, res) => {
     // 특정 회사의 게임만 필터링
     const companyGames = games.filter(game => game.company_name === companyName);
     
-    // 포인트 사용량을 포함한 게임 목록
-    const gamesWithUsage = await gameModel.getAllGamesWithPointUsage();
+    // 포인트 사용량을 포함한 게임 목록 (카테고리별 사용량 포함)
+    const gamesWithUsage = await gameModel.getAllGamesWithPointUsageAndCategories();
     const companyGamesWithUsage = gamesWithUsage.filter(game => game.companyName === companyName);
     
     // 총 포인트 계산
@@ -92,6 +92,35 @@ router.get('/company/:companyName', async (req, res) => {
       base: totalUsedBasePoints
     };
     
+    // 서비스 부문별 사용량 데이터 계산
+    const serviceCategoryUsage = {};
+    const serviceCategories = ['게임 서비스', '마케팅', '인프라', '컨설팅'];
+    
+    // 카테고리 초기화
+    serviceCategories.forEach(category => {
+      serviceCategoryUsage[category] = {
+        totalUsed: 0,
+        contractCount: 0
+      };
+    });
+    
+    // 각 게임의 카테고리별 사용량 합산
+    companyGamesWithUsage.forEach(game => {
+      if (game.categoryUsage) {
+        Object.keys(game.categoryUsage).forEach(category => {
+          if (!serviceCategoryUsage[category]) {
+            serviceCategoryUsage[category] = {
+              totalUsed: 0,
+              contractCount: 0
+            };
+          }
+          
+          serviceCategoryUsage[category].totalUsed += game.categoryUsage[category].totalUsed;
+          serviceCategoryUsage[category].contractCount += game.categoryUsage[category].contractCount || 0;
+        });
+      }
+    });
+    
     // 해당 게임사의 계약 정보 가져오기
     const contracts = await gameModel.getContractsByCompany(companyName);
     
@@ -109,6 +138,7 @@ router.get('/company/:companyName', async (req, res) => {
       totalSelfPoints,
       totalPoints,
       totalUsageData,
+      serviceCategoryUsage,
       userRole: req.session.user.role
     });
   } catch (error) {

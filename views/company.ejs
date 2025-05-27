@@ -88,7 +88,18 @@
             </div>
           </div>
           <div class="col-lg-4">
-            <canvas id="companyPointsChart"></canvas>
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title text-center mb-3">서비스 부문별 사용 현황</h5>
+                <canvas id="serviceCategoryChart"></canvas>
+                <div class="mt-2 text-center">
+                  <small class="text-muted">
+                    <% let totalUsed = 0; Object.keys(serviceCategoryUsage).forEach(category => { totalUsed += serviceCategoryUsage[category].totalUsed; }); %>
+                    총 사용량: <%= totalUsed.toLocaleString() %>원
+                  </small>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -468,36 +479,69 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // 포인트 차트 생성
-  var pointsCtx = document.getElementById('companyPointsChart').getContext('2d');
-  var basePoints = <%= totalBasePoints %>;
-  var selfPoints = <%= totalSelfPoints %>;
+  // 서비스 부문별 사용량 차트 생성
+  var serviceCtx = document.getElementById('serviceCategoryChart').getContext('2d');
   
-  new Chart(pointsCtx, {
-    type: 'pie',
+  // 서비스 부문별 데이터 준비
+  var categories = [];
+  var usageData = [];
+  var backgroundColors = [];
+  
+  <% 
+    // 색상 정의
+    const categoryColors = {
+      '게임 서비스': 'rgba(74, 86, 141, 0.8)',
+      '마케팅': 'rgba(90, 138, 90, 0.8)',
+      '인프라': 'rgba(200, 168, 105, 0.8)',
+      '컨설팅': 'rgba(107, 155, 210, 0.8)',
+      '기타': 'rgba(122, 122, 122, 0.8)'
+    };
+  %>
+  
+  <% Object.keys(serviceCategoryUsage).forEach(category => { 
+      if (serviceCategoryUsage[category].totalUsed > 0) { %>
+    categories.push('<%= category %>');
+    usageData.push(<%= serviceCategoryUsage[category].totalUsed %>);
+    backgroundColors.push('<%= categoryColors[category] || "rgba(122, 122, 122, 0.8)" %>');
+  <% } }); %>
+  
+  new Chart(serviceCtx, {
+    type: 'doughnut',
     data: {
-      labels: ['기본 포인트', '자부담 포인트'],
+      labels: categories,
       datasets: [{
-        data: [basePoints, selfPoints],
-        backgroundColor: [
-          'rgba(75, 192, 192, 0.7)',
-          'rgba(153, 102, 255, 0.7)'
-        ],
-        borderColor: [
-          'rgba(75, 192, 192, 1)',
-          'rgba(153, 102, 255, 1)'
-        ],
-        borderWidth: 1
+        data: usageData,
+        backgroundColor: backgroundColors,
+        borderWidth: 1,
+        borderColor: '#ffffff'
       }]
     },
     options: {
+      responsive: true,
+      maintainAspectRatio: true,
       plugins: {
         title: {
-          display: true,
-          text: '<%= companyName %> 포인트 분포'
+          display: false
         },
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: {
+            padding: 10,
+            font: {
+              size: 11
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var label = context.label || '';
+              var value = context.raw || 0;
+              var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+              var percentage = Math.round((value / total) * 100);
+              return label + ': ' + value.toLocaleString() + '원 (' + percentage + '%)';
+            }
+          }
         }
       }
     }
