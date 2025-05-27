@@ -281,14 +281,11 @@
                                  data-contract-id="<%= contract.contract_id %>"
                                  <%= contract.use_self_points ? 'checked' : '' %>
                                  onchange="togglePointUsage(this)">
-                          <label class="form-check-label" for="pointSwitch<%= contract.contract_id %>">
-                            자부담 우선
-                          </label>
                         </div>
                         <% if (contract.contract_amount) { %>
                         <div class="mt-1">
                           <small class="<%= contract.use_self_points ? 'text-primary' : 'text-secondary' %>">
-                            <%= contract.use_self_points ? '자부담+기본' : '기본만' %>
+                            <%= contract.use_self_points ? '자부담 우선 사용' : '기본 포인트만 사용' %>
                           </small>
                         </div>
                         <% } %>
