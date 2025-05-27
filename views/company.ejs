@@ -21,17 +21,21 @@
                 <div class="mb-4">
                   <% 
                     const totalAvailable = totalBasePoints + totalSelfPoints;
-                    const totalUsed = totalUsageData ? totalUsageData.total : 0;
-                    const usagePercent = totalAvailable > 0 ? (totalUsed / totalAvailable * 100) : 0;
+                    
+                    // 전체 사용률은 총 계약 금액(자부담/기본 구분 없이)을 기준으로 계산
+                    const totalContractUsed = typeof totalContractAmount !== 'undefined' ? totalContractAmount : 0;
+                    const usagePercent = totalAvailable > 0 ? (totalContractUsed / totalAvailable * 100) : 0;
+                    
                     let progressClass = 'bg-success';
                     if (usagePercent > 80) progressClass = 'bg-danger';
                     else if (usagePercent > 60) progressClass = 'bg-warning';
-                    const remainingPoints = totalAvailable - totalUsed;
+                    
+                    const remainingPoints = totalAvailable - totalContractUsed;
                   %>
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">전체 사용률</h6>
                     <small class="text-muted">
-                      <%= totalUsed.toLocaleString() %>원 / <%= totalAvailable.toLocaleString() %>원
+                      <%= totalContractUsed.toLocaleString() %>원 / <%= totalAvailable.toLocaleString() %>원
                     </small>
                   </div>
                   <div class="progress mb-2" style="height: 12px;">

@@ -92,6 +92,31 @@ router.get('/company/:companyName', async (req, res) => {
       base: totalUsedBasePoints
     };
     
+    // 해당 회사의 계약 정보 가져오기 (전체 사용률 계산용)
+    let contracts = [];
+    let totalContractAmount = 0;
+    
+    try {
+      contracts = await gameModel.getContractsByCompany(companyName) || [];
+      
+      // 전체 계약 금액 합산 (자부담/기본 구분 없이)
+      if (contracts && contracts.length > 0) {
+        contracts.forEach(contract => {
+          if (contract.contract_amount && contract.selected_vendor) {
+            // pointCalculator의 parseContractAmount 함수를 사용하기 위해 모듈 임포트 필요
+            const pointCalculator = require('../models/pointCalculator');
+            const amount = pointCalculator.parseContractAmount(contract.contract_amount);
+            if (amount > 0) {
+              totalContractAmount += amount;
+            }
+          }
+        });
+      }
+    } catch (err) {
+      console.error('계약 정보 조회 오류:', err);
+      contracts = [];
+    }
+    
     // 서비스 부문별 사용량 데이터 계산
     const serviceCategoryUsage = {};
     const serviceCategories = ['게임 서비스', '마케팅', '인프라', '컨설팅'];
@@ -121,15 +146,6 @@ router.get('/company/:companyName', async (req, res) => {
       }
     });
     
-    // 해당 게임사의 계약 정보 가져오기
-    let contracts = [];
-    try {
-      contracts = await gameModel.getContractsByCompany(companyName) || [];
-    } catch (err) {
-      console.error('계약 정보 조회 오류:', err);
-      contracts = [];
-    }
-    
     // 계약 상태 목록 (필터링용)
     const contractStatusList = ['견적요청', '견적서 제출', '선정완료', '계약완료'];
     
@@ -144,6 +160,7 @@ router.get('/company/:companyName', async (req, res) => {
       totalSelfPoints,
       totalPoints,
       totalUsageData,
+      totalContractAmount,
       serviceCategoryUsage,
       userRole: req.session.user.role
     });
