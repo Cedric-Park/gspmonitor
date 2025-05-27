@@ -122,7 +122,13 @@ router.get('/company/:companyName', async (req, res) => {
     });
     
     // 해당 게임사의 계약 정보 가져오기
-    const contracts = await gameModel.getContractsByCompany(companyName);
+    let contracts = [];
+    try {
+      contracts = await gameModel.getContractsByCompany(companyName) || [];
+    } catch (err) {
+      console.error('계약 정보 조회 오류:', err);
+      contracts = [];
+    }
     
     // 계약 상태 목록 (필터링용)
     const contractStatusList = ['견적요청', '견적서 제출', '선정완료', '계약완료'];

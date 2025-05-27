@@ -94,7 +94,16 @@
                 <canvas id="serviceCategoryChart"></canvas>
                 <div class="mt-2 text-center">
                   <small class="text-muted">
-                    <% let categoryTotalUsed = 0; Object.keys(serviceCategoryUsage).forEach(category => { categoryTotalUsed += serviceCategoryUsage[category].totalUsed; }); %>
+                    <% 
+                      let categoryTotalUsed = 0;
+                      if (typeof serviceCategoryUsage !== 'undefined') {
+                        Object.keys(serviceCategoryUsage).forEach(category => { 
+                          if(serviceCategoryUsage[category] && serviceCategoryUsage[category].totalUsed) {
+                            categoryTotalUsed += serviceCategoryUsage[category].totalUsed;
+                          }
+                        });
+                      }
+                    %>
                     총 사용량: <%= categoryTotalUsed.toLocaleString() %>원
                   </small>
                 </div>
@@ -498,12 +507,14 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   %>
   
-  <% Object.keys(serviceCategoryUsage).forEach(category => { 
-      if (serviceCategoryUsage[category].totalUsed > 0) { %>
+  <% if (typeof serviceCategoryUsage !== 'undefined') {
+      Object.keys(serviceCategoryUsage).forEach(category => { 
+        if (serviceCategoryUsage[category] && serviceCategoryUsage[category].totalUsed > 0) { %>
     categories.push('<%= category %>');
     usageData.push(<%= serviceCategoryUsage[category].totalUsed %>);
     backgroundColors.push('<%= categoryColors[category] || "rgba(122, 122, 122, 0.8)" %>');
-  <% } }); %>
+  <% } });
+    } %>
   
   new Chart(serviceCtx, {
     type: 'doughnut',
