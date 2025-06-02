@@ -90,25 +90,11 @@ router.get('/', async (req, res) => {
 // 통계 페이지 (어드민과 매니저만 접근 가능)
 router.get('/statistics', checkAdminManagerRole, async (req, res) => {
   try {
-    // 날짜 필터링 파라미터 가져오기 (옵션)
-    let startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-    let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
-    
-    // 날짜가 지정되지 않은 경우 기본값 설정 (최근 3개월)
-    if (!startDate) {
-      startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - 3);
-    }
-    
-    if (!endDate) {
-      endDate = new Date();
-    }
-    
     // 게임사별 포인트 사용률 통계 가져오기
-    const companyUsageStats = await statisticsModel.getCompanyUsageStatistics(startDate, endDate);
+    const companyUsageStats = await statisticsModel.getCompanyUsageStatistics();
     
     // 서비스 부문별 포인트 사용 통계 가져오기
-    const serviceCategoryStats = await statisticsModel.getServiceCategoryStatistics(startDate, endDate);
+    const serviceCategoryStats = await statisticsModel.getServiceCategoryStatistics();
     
     // 마지막 동기화 시간과 다음 동기화까지 남은 시간 정보 가져오기
     const syncInfo = await gameModel.getNextSyncInfo();
@@ -117,10 +103,6 @@ router.get('/statistics', checkAdminManagerRole, async (req, res) => {
       title: '포인트 통계',
       companyUsageStats,
       serviceCategoryStats,
-      currentFilters: {
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
-      },
       syncInfo: {
         lastSync: syncInfo.lastSync ? syncInfo.lastSync.toLocaleString('ko-KR') : '정보 없음',
         nextSync: syncInfo.nextSync ? syncInfo.nextSync.toLocaleString('ko-KR') : '정보 없음',

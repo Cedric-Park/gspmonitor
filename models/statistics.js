@@ -4,11 +4,9 @@ const pointCalculator = require('./pointCalculator');
 
 /**
  * 게임사별 포인트 사용률 통계 가져오기
- * @param {Date} startDate 시작 날짜 (옵션)
- * @param {Date} endDate 종료 날짜 (옵션)
  * @returns {Promise<Array>} 게임사별 포인트 사용 통계 배열
  */
-async function getCompanyUsageStatistics(startDate, endDate) {
+async function getCompanyUsageStatistics() {
   try {
     // 모든 게임사의 포인트 현황 가져오기
     const companyPoints = await gameModel.getPointsByCompany();
@@ -20,20 +18,9 @@ async function getCompanyUsageStatistics(startDate, endDate) {
       // 해당 게임사의 계약 정보 가져오기
       const contracts = await gameModel.getContractsByCompany(company.company_name);
       
-      // 필터링: 날짜 범위가 지정된 경우
-      let filteredContracts = contracts;
-      if (startDate && endDate) {
-        filteredContracts = contracts.filter(contract => {
-          if (!contract.updated_at) return false;
-          
-          const contractDate = new Date(contract.updated_at);
-          return contractDate >= startDate && contractDate <= endDate;
-        });
-      }
-      
       // 계약 금액 합산
       let totalContractAmount = 0;
-      filteredContracts.forEach(contract => {
+      contracts.forEach(contract => {
         if (contract.contract_amount && contract.selected_vendor) {
           const amount = pointCalculator.parseContractAmount(contract.contract_amount);
           if (amount > 0) {
@@ -67,11 +54,9 @@ async function getCompanyUsageStatistics(startDate, endDate) {
 
 /**
  * 서비스 부문별 포인트 사용 통계 가져오기
- * @param {Date} startDate 시작 날짜 (옵션)
- * @param {Date} endDate 종료 날짜 (옵션)
  * @returns {Promise<Object>} 서비스 부문별 포인트 사용 통계 객체
  */
-async function getServiceCategoryStatistics(startDate, endDate) {
+async function getServiceCategoryStatistics() {
   try {
     // 모든 게임의 포인트 사용량 가져오기 (서비스 부문별 데이터 포함)
     const allGamesWithCategories = await gameModel.getAllGamesWithPointUsageAndCategories();
@@ -94,11 +79,8 @@ async function getServiceCategoryStatistics(startDate, endDate) {
             categoryTotals[category] = 0;
           }
           
-          // 계약들 필터링 (날짜 범위가 지정된 경우)
+          // 사용량 합산
           let usedAmount = game.categoryUsage[category].totalUsed || 0;
-          
-          // 날짜 필터링은 모델 레벨에서 적용하기 어려워 
-          // 서버 사이드에서 적용하지 않고, 클라이언트 측에서 처리함
           categoryTotals[category] += usedAmount;
         });
       }

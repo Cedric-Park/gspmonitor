@@ -20,34 +20,6 @@
         <% } %>
       </div>
       <div class="card-body">
-        <!-- 필터링 옵션 -->
-        <div class="row mb-4">
-          <div class="col-md-12">
-            <div class="card shadow">
-              <div class="card-header bg-light">
-                <h5 class="mb-0">데이터 필터링</h5>
-              </div>
-              <div class="card-body">
-                <form action="/statistics" method="GET" class="row g-3">
-                  <div class="col-md-5">
-                    <label for="startDate" class="form-label">시작 날짜</label>
-                    <input type="date" class="form-control" id="startDate" name="startDate" 
-                           value="<%= currentFilters.startDate %>">
-                  </div>
-                  <div class="col-md-5">
-                    <label for="endDate" class="form-label">종료 날짜</label>
-                    <input type="date" class="form-control" id="endDate" name="endDate" 
-                           value="<%= currentFilters.endDate %>">
-                  </div>
-                  <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">적용</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-        
         <% if (typeof companyUsageStats !== 'undefined' && companyUsageStats.length > 0) { %>
           <!-- 게임사별 포인트 사용률 차트 -->
           <div class="row mb-4">
