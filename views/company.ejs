@@ -504,8 +504,22 @@ document.addEventListener('DOMContentLoaded', function() {
       '마케팅': 'rgba(90, 138, 90, 0.8)',
       '인프라': 'rgba(200, 168, 105, 0.8)',
       '컨설팅': 'rgba(107, 155, 210, 0.8)',
-      '기타': 'rgba(122, 122, 122, 0.8)'
+      '기타': 'rgba(122, 122, 122, 0.8)',
+      '미사용 포인트': 'rgba(220, 220, 220, 0.8)'
     };
+    
+    // 총 사용량 계산
+    let totalUsed = 0;
+    if (typeof serviceCategoryUsage !== 'undefined') {
+      Object.keys(serviceCategoryUsage).forEach(category => { 
+        if(serviceCategoryUsage[category] && serviceCategoryUsage[category].totalUsed) {
+          totalUsed += serviceCategoryUsage[category].totalUsed;
+        }
+      });
+    }
+    
+    // 미사용 포인트 계산
+    const unusedPoints = totalPoints - totalUsed;
   %>
   
   <% if (typeof serviceCategoryUsage !== 'undefined') {
@@ -516,6 +530,12 @@ document.addEventListener('DOMContentLoaded', function() {
     backgroundColors.push('<%= categoryColors[category] || "rgba(122, 122, 122, 0.8)" %>');
   <% } });
     } %>
+  
+  <% if (unusedPoints > 0) { %>
+    categories.push('미사용 포인트');
+    usageData.push(<%= unusedPoints %>);
+    backgroundColors.push('<%= categoryColors["미사용 포인트"] %>');
+  <% } %>
   
   new Chart(serviceCtx, {
     type: 'doughnut',
@@ -549,8 +569,7 @@ document.addEventListener('DOMContentLoaded', function() {
             label: function(context) {
               var label = context.label || '';
               var value = context.raw || 0;
-              var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
-              var percentage = Math.round((value / total) * 100);
+              var percentage = Math.round((value / <%= totalPoints %>) * 100);
               return label + ': ' + value.toLocaleString() + '원 (' + percentage + '%)';
             }
           }
