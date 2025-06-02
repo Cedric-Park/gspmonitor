@@ -50,6 +50,15 @@ router.get('/', async (req, res) => {
       gamesWithCategoryUsage = await gameModel.getAllGamesWithPointUsageAndCategories();
     }
     
+    // 사용률 기준으로 내림차순 정렬 (사용률이 높은 순으로)
+    if (gamesWithCategoryUsage && gamesWithCategoryUsage.length > 0) {
+      gamesWithCategoryUsage.sort((a, b) => {
+        const usageRateA = a.totalPoints > 0 ? (a.pointsUsed.total / a.totalPoints * 100) : 0;
+        const usageRateB = b.totalPoints > 0 ? (b.pointsUsed.total / b.totalPoints * 100) : 0;
+        return usageRateB - usageRateA; // 내림차순 정렬
+      });
+    }
+    
     // 각 게임사의 계약 정보 존재 여부 확인
     const companyContractStatus = await gameModel.getCompanyContractStatus();
     

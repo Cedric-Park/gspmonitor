@@ -63,7 +63,14 @@
                     <!-- 사용률 프로그레스 바 -->
                     <div class="mb-3">
                       <% 
-                        const usagePercent = game.totalPoints > 0 ? (game.pointsUsed.total / game.totalPoints * 100) : 0;
+                        // 사용률 계산 방식 수정: 계약 금액을 기준으로 사용률 계산
+                        // 기존: const usagePercent = game.totalPoints > 0 ? (game.pointsUsed.total / game.totalPoints * 100) : 0;
+                        
+                        // 계약 금액은 pointsUsed.total과 동일한 값을 사용
+                        const totalContractUsed = game.pointsUsed.total;
+                        const totalAvailable = game.totalPoints;
+                        const usagePercent = totalAvailable > 0 ? (totalContractUsed / totalAvailable * 100) : 0;
+                        
                         let progressColor = '#5A8A5A';
                         if (usagePercent > 75) progressColor = '#B85450';
                         else if (usagePercent > 50) progressColor = '#C8A869';
@@ -94,7 +101,7 @@
                           <% if (game.categoryUsage[category] && game.categoryUsage[category].totalUsed > 0) { %>
                             <div class="d-flex justify-content-between align-items-center mb-1">
                               <span class="badge text-white me-2" style="background-color: <%= categoryColors[category] %>;"><%= category %></span>
-                              <small class="fw-bold"><%= (game.categoryUsage[category].totalUsed / 1000000).toFixed(1) %>M원</small>
+                              <small class="fw-bold"><%= game.categoryUsage[category].totalUsed.toLocaleString() %>원</small>
                             </div>
                           <% } %>
                         <% }); %>
@@ -104,7 +111,7 @@
                           <% if (!serviceCategories.includes(category) && game.categoryUsage[category].totalUsed > 0) { %>
                             <div class="d-flex justify-content-between align-items-center mb-1">
                               <span class="badge text-white me-2" style="background-color: #7A7A7A;"><%= category %></span>
-                              <small class="fw-bold"><%= (game.categoryUsage[category].totalUsed / 1000000).toFixed(1) %>M원</small>
+                              <small class="fw-bold"><%= game.categoryUsage[category].totalUsed.toLocaleString() %>원</small>
                             </div>
                           <% } %>
                         <% }); %>
@@ -119,7 +126,7 @@
                     <!-- 배정 포인트 정보 (작게) -->
                     <div class="mt-3 pt-2 border-top">
                       <small class="text-muted">
-                        배정: 기본 <%= (game.basePoints / 1000000).toFixed(0) %>M + 자부담 <%= (game.selfPoints / 1000000).toFixed(0) %>M
+                        배정: 기본 <%= game.basePoints.toLocaleString() %>원 + 자부담 <%= game.selfPoints.toLocaleString() %>원
                       </small>
                     </div>
                   </div>
@@ -279,8 +286,7 @@
           tooltip: {
             callbacks: {
               label: function(context) {
-                const value = (context.parsed / 1000000).toFixed(1);
-                return context.label + ': ' + value + 'M원';
+                return context.label + ': ' + context.parsed.toLocaleString() + '원';
               }
             }
           }
@@ -290,9 +296,11 @@
 
     // 게임사별 사용률 차트
     const companies = gamesWithCategoryUsage.map(game => game.companyName);
-    const usageRates = gamesWithCategoryUsage.map(game => 
-      game.totalPoints > 0 ? (game.pointsUsed.total / game.totalPoints * 100) : 0
-    );
+    const usageRates = gamesWithCategoryUsage.map(game => {
+      const totalContractUsed = game.pointsUsed.total;
+      const totalAvailable = game.totalPoints;
+      return totalAvailable > 0 ? (totalContractUsed / totalAvailable * 100) : 0;
+    });
 
     const usageRateCtx = document.getElementById('usageRateChart').getContext('2d');
     new Chart(usageRateCtx, {

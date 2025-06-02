@@ -82,6 +82,15 @@ function getGamePointUsage(gameId) {
           return;
         }
         
+        // 모든 계약의 총 금액 계산 (자부담/기본 구분 없이)
+        let totalContractAmount = 0;
+        contracts.forEach(contract => {
+          const amount = parseContractAmount(contract.contract_amount);
+          if (amount > 0) {
+            totalContractAmount += amount;
+          }
+        });
+        
         // 자부담 우선 사용 계약들과 기본만 사용 계약들 분리
         let selfFirstContracts = [];
         let baseOnlyContracts = [];
@@ -138,8 +147,9 @@ function getGamePointUsage(gameId) {
           totalBaseUsed += baseOnlyDistribution.basePointsUsed;
         }
         
+        // 게임사 상세 페이지와 일치시키기 위해 총 계약 금액을 사용량으로 설정
         resolve({
-          totalUsed: totalSelfUsed + totalBaseUsed,
+          totalUsed: totalContractAmount, // 계약 금액의 총합을 사용
           selfUsed: totalSelfUsed,
           baseUsed: totalBaseUsed
         });
