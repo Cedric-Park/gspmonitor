@@ -3,49 +3,6 @@ const router = express.Router();
 const gameModel = require('../models/game');
 const managerModel = require('../models/manager');
 
-// 모든 게임 목록 가져오기
-router.get('/', async (req, res) => {
-  try {
-    const games = await gameModel.getAllGames();
-    let filteredGames = games;
-    
-    // 사용자 권한에 따라 필터링
-    if (req.session.user.role === '담당자') {
-      // 담당자의 경우 담당하는 게임사만 표시
-      const managerId = req.session.user.id;
-      const userCompanies = await managerModel.getCompaniesByManager(managerId);
-      
-      if (userCompanies && userCompanies.length > 0) {
-        filteredGames = games.filter(game => userCompanies.includes(game.company_name));
-      } else {
-        filteredGames = [];
-      }
-    }
-    
-    // 회사별로 그룹화
-    const gamesByCompany = filteredGames.reduce((acc, game) => {
-      if (!acc[game.company_name]) {
-        acc[game.company_name] = [];
-      }
-      acc[game.company_name].push(game);
-      return acc;
-    }, {});
-    
-    res.render('games', { 
-      title: '게임 목록',
-      gamesByCompany,
-      userRole: req.session.user.role
-    });
-  } catch (error) {
-    console.error('게임 목록 에러:', error);
-    res.status(500).render('error', { 
-      title: '오류 발생',
-      message: '게임 데이터를 가져오는 중 오류가 발생했습니다.',
-      error
-    });
-  }
-});
-
 // 게임사별 게임 목록 가져오기
 router.get('/company/:companyName', async (req, res) => {
   try {
