@@ -9,7 +9,8 @@ module.exports = {
     sheetId: '1rwYFY1VdwF5eRS0QKEa5NhJp_xQOtVfqCxaV0oeEI3A',
     range: 'GameInfo!A:F',
     contractSheetId: '1f-hZy_FJUS3ga6MV3KRqFy5vOEghNjVpH1poGRu7fDw', // 계약 정보 스프레드시트 ID
-    contractRange: '게임더하기_계약_2025!A:N' // N열까지 확장 (K~N열: 협력사명, 계약금액, 업무시작일, 업무종료일)
+    contractRange: '게임더하기_계약_2025!A:N', // N열까지 확장 (K~N열: 협력사명, 계약금액, 업무시작일, 업무종료일)
+    pointUsageDBSheetId: '1rwYFY1VdwF5eRS0QKEa5NhJp_xQOtVfqCxaV0oeEI3A' // PointUsageDB 스프레드시트 ID
   },
   
   // 데이터베이스 설정

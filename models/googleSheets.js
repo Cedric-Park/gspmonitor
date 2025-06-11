@@ -418,10 +418,276 @@ async function testFetchGameData() {
   }
 }
 
+// 모듈 내보내기
 module.exports = {
   fetchGameData,
   fetchContractData,
   getContractsByCompany,
+  parsePointValue,
+  parseCSVLine,
+  parseCSV,
+  calculateWorkStatus,
+  // 테스트 함수
   testFetchGameData,
-  calculateWorkStatus
-}; 
+  // PointUsageDB 업데이트 함수 추가
+  updatePointUsageDB
+};
+
+// PointUsageDB 스프레드시트에 데이터 업데이트하는 함수
+async function updatePointUsageDB(contracts) {
+  try {
+    console.log('PointUsageDB 업데이트 시작');
+
+    // 구글 OAuth 클라이언트 인증 설정
+    const auth = new google.auth.GoogleAuth({
+      keyFile: 'credentials.json',  // 서비스 계정 인증 파일 경로
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: client });
+
+    // 스프레드시트 ID와 시트 이름
+    const sheetId = config.googleSheet.pointUsageDBSheetId || '1rwYFY1VdwF5eRS0QKEa5NhJp_xQOtVfqCxaV0oeEI3A'; // 구글 시트 ID
+    const sheetName = 'PointUsageDB'; // 시트 이름
+
+    console.log(`PointUsageDB 스프레드시트 ID: ${sheetId}, 시트 이름: ${sheetName}`);
+
+    // 기존 PointUsageDB 데이터 가져오기
+    const existingData = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${sheetName}!A:W`,  // 전체 데이터 범위
+    });
+
+    const rows = existingData.data.values || [];
+    console.log(`기존 데이터 ${rows.length}개 행 로드됨`);
+
+    // 헤더 행 가져오기
+    const headers = rows.length > 0 ? rows[0] : [];
+    
+    // 계약코드 열 인덱스 찾기
+    const contractCodeIndex = headers.findIndex(header => header === '계약코드');
+    
+    if (contractCodeIndex === -1) {
+      throw new Error('계약코드 열을 찾을 수 없습니다');
+    }
+
+    // 기존 계약코드 목록과 매핑
+    const existingContractCodes = {};
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i] && rows[i][contractCodeIndex]) {
+        existingContractCodes[rows[i][contractCodeIndex]] = i;  // 계약코드와 행 인덱스 매핑
+      }
+    }
+
+    // 다음 계약코드 번호 계산
+    let nextContractNumber = 1;
+    Object.keys(existingContractCodes).forEach(code => {
+      if (code.startsWith('T')) {
+        const num = parseInt(code.substring(1));
+        if (!isNaN(num) && num >= nextContractNumber) {
+          nextContractNumber = num + 1;
+        }
+      }
+    });
+
+    console.log(`다음 계약코드 번호: T${nextContractNumber.toString().padStart(5, '0')}`);
+
+    // 업데이트할 데이터 준비
+    const updates = [];
+    const newRows = [];
+    
+    for (const contract of contracts) {
+      // 계약 데이터를 PointUsageDB 형식으로 변환
+      const rowData = transformContractToPointUsageDB(contract, headers);
+      
+      // 계약코드 생성 (새 데이터) 또는 할당 (기존 데이터)
+      let contractCode;
+      
+      if (contract.pointUsageDBCode) {
+        // 이미 계약코드가 있는 경우
+        contractCode = contract.pointUsageDBCode;
+      } else {
+        // 새 계약코드 생성
+        contractCode = `T${nextContractNumber.toString().padStart(5, '0')}`;
+        nextContractNumber++;
+      }
+      
+      // 계약코드 설정
+      rowData[contractCodeIndex] = contractCode;
+      
+      // 이 계약코드가 이미 존재하는지 확인
+      if (existingContractCodes[contractCode] !== undefined) {
+        // 기존 데이터 업데이트
+        const rowIndex = existingContractCodes[contractCode];
+        const range = `${sheetName}!A${rowIndex + 1}:W${rowIndex + 1}`;
+        
+        // 기존 행과 새 행이 다른지 확인
+        const existingRow = rows[rowIndex];
+        let isDifferent = false;
+        
+        for (let i = 0; i < rowData.length; i++) {
+          if (i < existingRow.length && rowData[i] !== existingRow[i]) {
+            isDifferent = true;
+            break;
+          }
+        }
+        
+        if (isDifferent) {
+          // 변경사항이 있을 경우만 업데이트
+          updates.push({
+            range,
+            values: [rowData]
+          });
+          console.log(`계약코드 ${contractCode} 업데이트 예정`);
+        }
+      } else {
+        // 새 데이터 추가
+        newRows.push(rowData);
+        console.log(`계약코드 ${contractCode} 추가 예정`);
+      }
+    }
+
+    // 업데이트 요청 실행
+    let updateResults = { updatedRows: 0 };
+    if (updates.length > 0) {
+      updateResults = await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: sheetId,
+        resource: {
+          valueInputOption: 'USER_ENTERED',
+          data: updates
+        }
+      });
+      console.log(`${updates.length}개 행이 업데이트되었습니다.`);
+    }
+
+    // 새 행 추가 요청 실행
+    let appendResults = { updatedRows: 0 };
+    if (newRows.length > 0) {
+      appendResults = await sheets.spreadsheets.values.append({
+        spreadsheetId: sheetId,
+        range: `${sheetName}!A:W`,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: newRows
+        }
+      });
+      console.log(`${newRows.length}개 새 행이 추가되었습니다.`);
+    }
+
+    return {
+      success: true,
+      message: 'PointUsageDB 업데이트 완료',
+      updatedRows: updateResults.updatedRows || 0,
+      appendedRows: newRows.length,
+      nextContractCode: `T${nextContractNumber.toString().padStart(5, '0')}`
+    };
+  } catch (error) {
+    console.error('PointUsageDB 업데이트 오류:', error);
+    throw error;
+  }
+}
+
+// 계약 정보를 PointUsageDB 형식으로 변환하는 함수
+function transformContractToPointUsageDB(contract, headers) {
+  // 날짜 형식 추출 함수
+  const extractYearMonth = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+  };
+
+  // 금액에서 P와 쉼표 제거
+  const cleanAmount = (amountStr) => {
+    if (!amountStr) return 0;
+    return parseInt(amountStr.toString().replace(/[^0-9]/g, '')) || 0;
+  };
+
+  // 기본 빈 배열 생성 (헤더 길이만큼)
+  const rowData = new Array(headers.length).fill('');
+
+  // 헤더별 데이터 매핑
+  headers.forEach((header, index) => {
+    switch(header) {
+      case '#':
+        rowData[index] = ''; // 자동 번호 부여됨
+        break;
+      case '협력사명':
+        rowData[index] = contract.selected_vendor || '';
+        break;
+      case '게임사명':
+        rowData[index] = contract.company_name || '';
+        break;
+      case '국내/해외':
+        rowData[index] = '국내'; // 기본값
+        break;
+      case '대분류':
+        rowData[index] = contract.service_category || '';
+        break;
+      case '소분류':
+        rowData[index] = contract.service_detail || '';
+        break;
+      case '상세 서비스명':
+        rowData[index] = contract.service_request || '';
+        break;
+      case '계약일자':
+        rowData[index] = contract.selection_deadline || '';
+        break;
+      case '완료일자':
+        rowData[index] = contract.work_end_date || '';
+        break;
+      case '결과물 검수일':
+        rowData[index] = ''; // 비워둠
+        break;
+      case '진행상황':
+        rowData[index] = contract.status || '';
+        break;
+      case '정산상태':
+        rowData[index] = '정산대기';
+        break;
+      case '계약금액 (KRW)':
+        rowData[index] = cleanAmount(contract.contract_amount);
+        break;
+      case '계약금액 (USD)':
+        rowData[index] = 0;
+        break;
+      case '환율':
+        rowData[index] = 0;
+        break;
+      case '환산 금액 (KRW)':
+        rowData[index] = cleanAmount(contract.contract_amount);
+        break;
+      case '정산대기사유':
+        rowData[index] = '';
+        break;
+      case '포인트 출처':
+        rowData[index] = '';
+        break;
+      case '계약월구분':
+        rowData[index] = extractYearMonth(contract.selection_deadline);
+        break;
+      case '완료월구분':
+        rowData[index] = extractYearMonth(contract.work_end_date);
+        break;
+      case '최종승인일자':
+        rowData[index] = '';
+        break;
+      case '정산일자':
+        rowData[index] = '1900-01-01';
+        break;
+      case '계약코드':
+        rowData[index] = contract.pointUsageDBCode || ''; // 나중에 설정됨
+        break;
+      case '기본 차감':
+        rowData[index] = cleanAmount(contract.contract_amount);
+        break;
+      case '자부담 차감':
+      case '우수 차감':
+        rowData[index] = 0;
+        break;
+    }
+  });
+
+  return rowData;
+} 

@@ -77,7 +77,8 @@ router.get('/', async (req, res) => {
         lastSync: syncInfo.lastSync ? syncInfo.lastSync.toLocaleString('ko-KR') : '정보 없음',
         nextSync: syncInfo.nextSync ? syncInfo.nextSync.toLocaleString('ko-KR') : '정보 없음',
         remainingMinutes: syncInfo.remainingMinutes || 0
-      }
+      },
+      req // 요청 객체를 템플릿에 전달
     });
   } catch (error) {
     console.error('홈 페이지 에러:', error);
@@ -581,6 +582,34 @@ router.get('/sync', async (req, res) => {
     res.status(500).render('error', {
       title: '동기화 오류',
       message: '구글 스프레드시트와 동기화 중 오류가 발생했습니다.',
+      error
+    });
+  }
+});
+
+// PointUsageDB 업데이트 기능
+router.get('/update-point-usage-db', async (req, res) => {
+  try {
+    // 어드민만 사용 가능한 기능으로 제한
+    if (req.session.user.role !== '어드민') {
+      return res.status(403).render('error', {
+        title: '접근 제한',
+        message: '이 기능을 사용할 권한이 없습니다.',
+        error: { status: 403 }
+      });
+    }
+    
+    // PointUsageDB 업데이트 실행
+    const result = await gameModel.updatePointUsageDB();
+    
+    // 성공 시 원래 페이지로 리다이렉트
+    const redirectUrl = req.query.from ? req.query.from : '/?update=success';
+    res.redirect(redirectUrl);
+  } catch (error) {
+    console.error('PointUsageDB 업데이트 에러:', error);
+    res.status(500).render('error', {
+      title: 'PointUsageDB 업데이트 오류',
+      message: 'PointUsageDB 업데이트 중 오류가 발생했습니다.',
       error
     });
   }

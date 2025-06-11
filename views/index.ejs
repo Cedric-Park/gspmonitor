@@ -16,10 +16,29 @@
           <% } %>
         </div>
         <% if (user && user.role === '어드민') { %>
-        <a href="/sync" class="btn btn-light btn-sm">데이터 동기화</a>
+        <div class="btn-group">
+          <a href="/sync" class="btn btn-light btn-sm">데이터 동기화</a>
+          <a href="/update-point-usage-db?from=/" class="btn btn-light btn-sm" title="최종계약체결 항목을 PointUsageDB에 업데이트합니다">
+            <i class="bi bi-arrow-up-circle"></i> PointUsageDB 업데이트
+          </a>
+        </div>
         <% } %>
       </div>
       <div class="card-body">
+        <% if (typeof req !== 'undefined' && req.query.update === 'success') { %>
+        <div class="alert alert-success mb-3 alert-dismissible fade show">
+          <i class="bi bi-check-circle-fill me-2"></i> PointUsageDB 업데이트가 성공적으로 완료되었습니다.
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <% } %>
+        
+        <% if (typeof req !== 'undefined' && req.query.sync === 'success') { %>
+        <div class="alert alert-success mb-3 alert-dismissible fade show">
+          <i class="bi bi-check-circle-fill me-2"></i> 데이터 동기화가 성공적으로 완료되었습니다.
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <% } %>
+        
         <% if (user && user.role === '담당자') { %>
         <div class="alert alert-info mb-3">
           <i class="bi bi-info-circle-fill me-2"></i> 현재 사용자의 역할은 <strong>담당자</strong>입니다. 담당하고 있는 게임사의 포인트 정보만 표시됩니다.

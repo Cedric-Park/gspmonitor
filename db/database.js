@@ -319,6 +319,40 @@ function initDatabase() {
     }
   });
 
+  // contract_meta 테이블 확인 및 생성
+  pendingOperations++;
+  db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='contract_meta'", (err, result) => {
+    if (err) {
+      console.error('contract_meta 테이블 조회 오류:', err.message);
+      completeOperation();
+      return;
+    }
+
+    if (!result) {
+      // contract_meta 테이블이 없으면 생성
+      db.run(`
+        CREATE TABLE IF NOT EXISTS contract_meta (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          contract_id TEXT NOT NULL UNIQUE,
+          point_usage_db_code TEXT,
+          additional_info TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `, (createErr) => {
+        if (createErr) {
+          console.error('contract_meta 테이블 생성 오류:', createErr.message);
+        } else {
+          console.log('contract_meta 테이블이 생성되었습니다.');
+        }
+        completeOperation();
+      });
+    } else {
+      console.log('contract_meta 테이블이 이미 존재합니다.');
+      completeOperation();
+    }
+  });
+
   // 기타 테이블 생성...
   pendingOperations++;
   createOtherTables(() => {
