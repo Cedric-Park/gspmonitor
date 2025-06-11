@@ -544,15 +544,35 @@ async function updatePointUsageDB() {
   try {
     console.log('PointUsageDB 업데이트 시작');
     
-    // 최종계약체결된 계약만 가져오기
+    // 게임 테이블에 등록된 게임사 목록 조회
+    const gameCompaniesQuery = `SELECT DISTINCT company_name FROM games`;
+    
+    const gameCompanies = await new Promise((resolve, reject) => {
+      db.all(gameCompaniesQuery, [], (err, rows) => {
+        if (err) {
+          console.error('게임사 목록 조회 오류:', err);
+          reject(err);
+          return;
+        }
+        resolve(rows.map(row => row.company_name));
+      });
+    });
+    
+    console.log(`게임 테이블에 등록된 게임사 ${gameCompanies.length}개 확인`);
+    
+    // 게임사 목록을 IN 절에 사용하기 위한 플레이스홀더와 값 생성
+    const placeholders = gameCompanies.map(() => '?').join(',');
+    
+    // 최종계약체결된 계약 중 게임 테이블에 등록된 게임사의 계약만 가져오기
     const query = `
       SELECT * FROM contracts 
       WHERE status = '최종계약체결' 
+      AND company_name IN (${placeholders})
       ORDER BY company_name, selection_deadline
     `;
     
     return new Promise((resolve, reject) => {
-      db.all(query, [], async (err, contracts) => {
+      db.all(query, gameCompanies, async (err, contracts) => {
         if (err) {
           console.error('최종계약체결 계약 조회 오류:', err);
           reject(err);
@@ -560,7 +580,7 @@ async function updatePointUsageDB() {
         }
         
         try {
-          console.log(`총 ${contracts.length}개의 최종계약체결 계약 조회됨`);
+          console.log(`총 ${contracts.length}개의 최종계약체결 계약 조회됨 (등록된 게임사만)`);
           
           // 각 계약의 pointUsageDBCode 확인 (DB에 저장된 계약코드)
           const contractsWithCodes = await Promise.all(contracts.map(async (contract) => {

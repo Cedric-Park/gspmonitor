@@ -622,13 +622,13 @@ function transformContractToPointUsageDB(contract, headers) {
       case '국내/해외':
         rowData[index] = '국내'; // 기본값
         break;
-      case '대분류':
+      case '서비스 부문': // 이전 '대분류'
         rowData[index] = contract.service_category || '';
         break;
-      case '소분류':
+      case '상세 서비스 항목': // 이전 '소분류'
         rowData[index] = contract.service_detail || '';
         break;
-      case '상세 서비스명':
+      case '서비스 요청명': // 이전 '상세 서비스명'
         rowData[index] = contract.service_request || '';
         break;
       case '계약일자':
@@ -662,6 +662,7 @@ function transformContractToPointUsageDB(contract, headers) {
         rowData[index] = '';
         break;
       case '포인트 출처':
+        // 포인트 출처는 공란으로 둠
         rowData[index] = '';
         break;
       case '계약월구분':
