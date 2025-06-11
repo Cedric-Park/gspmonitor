@@ -590,8 +590,15 @@ router.get('/sync', async (req, res) => {
 // PointUsageDB 업데이트 기능
 router.get('/update-point-usage-db', async (req, res) => {
   try {
+    // 세션 체크
+    if (!req.session || !req.session.user) {
+      console.log('미인증 사용자가 PointUsageDB 업데이트 시도');
+      return res.redirect('/auth/login');
+    }
+    
     // 어드민만 사용 가능한 기능으로 제한
     if (req.session.user.role !== '어드민') {
+      console.log(`권한 없는 사용자(${req.session.user.email})가 PointUsageDB 업데이트 시도`);
       return res.status(403).render('error', {
         title: '접근 제한',
         message: '이 기능을 사용할 권한이 없습니다.',
@@ -599,8 +606,11 @@ router.get('/update-point-usage-db', async (req, res) => {
       });
     }
     
+    console.log(`어드민 사용자(${req.session.user.email})가 PointUsageDB 업데이트 요청`);
+    
     // PointUsageDB 업데이트 실행
     const result = await gameModel.updatePointUsageDB();
+    console.log('PointUsageDB 업데이트 결과:', result);
     
     // 성공 시 원래 페이지로 리다이렉트
     const redirectUrl = req.query.from ? req.query.from : '/?update=success';
@@ -609,7 +619,7 @@ router.get('/update-point-usage-db', async (req, res) => {
     console.error('PointUsageDB 업데이트 에러:', error);
     res.status(500).render('error', {
       title: 'PointUsageDB 업데이트 오류',
-      message: 'PointUsageDB 업데이트 중 오류가 발생했습니다.',
+      message: 'PointUsageDB 업데이트 중 오류가 발생했습니다: ' + error.message,
       error
     });
   }
