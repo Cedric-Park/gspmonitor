@@ -1,5 +1,35 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# 코드 가이드라인
+
+## 코드 스타일
+- 들여쓰기: 2칸 공백 사용
+- 세미콜론(;) 사용
+- 문자열: 작은따옴표(') 대신 큰따옴표(") 사용
+- ES6+ 문법 사용 (화살표 함수, 구조 분해 할당 등)
+
+## 비동기 처리
+- Promise 대신 async/await 사용 권장
+- 오류 처리를 위해 try-catch 블록 사용
+
+## 명명 규칙
+- 변수 및 함수: camelCase 사용
+- 상수: UPPER_SNAKE_CASE 사용
+- 클래스: PascalCase 사용
+- 파일명: 기능 설명을 포함한 snake_case 사용
+
+## 주석
+- 함수와 중요 로직에 주석 추가
+- JSDoc 스타일 주석 권장
+- 한국어 주석 사용
+
+## 로깅
+- 중요 이벤트는 console.log 사용
+- 오류는 console.error 사용
+- 개발 중 디버깅은 console.debug 사용
+
+
+

@@ -1,5 +1,34 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# 개발 워크플로우
+
+## 개발 환경 설정
+- Node.js 최신 LTS 버전 사용
+- `.env` 파일 설정 (템플릿은 프로젝트 루트에 있음)
+- 개발 시 `npm run dev` 명령어 사용 (nodemon 활성화)
+
+## 디버깅
+- 코드 내 `console.log()` 사용
+- 주요 디버그 스크립트:
+  - [debug_contracts.js](mdc:debug_contracts.js): 개별 계약 디버깅
+  - [debug_all_contracts.js](mdc:debug_all_contracts.js): 모든 계약 디버깅
+
+## 테스트
+- [test-fetch.js](mdc:test-fetch.js): 데이터 가져오기 테스트
+- [test-sync.js](mdc:test-sync.js): 동기화 테스트
+- [test_new_ui.js](mdc:test_new_ui.js): UI 테스트
+
+## 배포
+- 프로덕션 배포 시 `npm start` 명령어 사용
+- 환경 변수 설정 필수 (NODE_ENV=production)
+
+## 유지보수
+- 정기적인 의존성 업데이트
+- 정기적인 데이터베이스 백업
+- 로그 파일 관리 및 모니터링
+
+
+

@@ -1,5 +1,33 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# 의존성 및 외부 통합
+
+## 핵심 패키지
+- [express](mdc:https:/expressjs.com): 웹 서버 프레임워크
+- [ejs](mdc:https:/ejs.co): 템플릿 엔진
+- [sqlite3](mdc:https:/github.com/TryGhost/node-sqlite3): 데이터베이스
+- [axios](mdc:https:/axios-http.com): HTTP 클라이언트
+- [chart.js](mdc:https:/www.chartjs.org): 데이터 시각화
+- [googleapis](mdc:https:/github.com/googleapis/google-api-nodejs-client): Google API 연동
+
+## 보안 관련 패키지
+- [bcrypt](mdc:https:/github.com/kelektiv/node.bcrypt.js): 비밀번호 해싱
+- [express-session](mdc:https:/github.com/expressjs/session): 세션 관리
+- [dotenv](mdc:https:/github.com/motdotla/dotenv): 환경 변수 관리
+
+## 유틸리티
+- [node-schedule](mdc:https:/github.com/node-schedule/node-schedule): 작업 예약
+- [nodemailer](mdc:https:/nodemailer.com): 이메일 발송
+
+## 개발 도구
+- [nodemon](mdc:https:/nodemon.io): 개발 중 자동 서버 재시작
+
+## 외부 서비스
+- Google Sheets API: 데이터 동기화에 사용
+- SMTP 서버: 이메일 알림 발송에 사용
+
+
+
