@@ -15,12 +15,59 @@
             </div>
           <% } %>
         </div>
-        <% if (user && user.role === '어드민') { %>
-          <a href="/sync" class="btn btn-light btn-sm">데이터 동기화</a>
-        <% } %>
+        <div>
+          <a href="/statistics/export-pdf" class="btn btn-light btn-sm me-2">
+            <i class="bi bi-file-earmark-pdf"></i> PDF 내보내기
+          </a>
+          <% if (user && user.role === '어드민') { %>
+            <a href="/sync" class="btn btn-light btn-sm">데이터 동기화</a>
+          <% } %>
+        </div>
       </div>
       <div class="card-body">
         <% if (typeof companyUsageStats !== 'undefined' && companyUsageStats.length > 0) { %>
+          
+          <!-- 포인트 현황 카드 -->
+          <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+              <div class="card text-white h-100" style="background-color: #4A568D;">
+                <div class="card-body text-center">
+                  <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + company.total_points, 0).toLocaleString() %> P</h3>
+                  <small>총 배정 포인트</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card text-white h-100" style="background-color: #B85450;">
+                <div class="card-body text-center">
+                  <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + company.used_points, 0).toLocaleString() %> P</h3>
+                  <small>총 사용 포인트</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card text-white h-100" style="background-color: #5A8A5A;">
+                <div class="card-body text-center">
+                  <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + (company.total_points - company.used_points), 0).toLocaleString() %> P</h3>
+                  <small>총 잔여 포인트</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card text-white h-100" style="background-color: #C8A869;">
+                <div class="card-body text-center">
+                  <% 
+                    const totalAlloc = companyUsageStats.reduce((sum, company) => sum + company.total_points, 0);
+                    const totalUsed = companyUsageStats.reduce((sum, company) => sum + company.used_points, 0);
+                    const usageRate = totalAlloc > 0 ? (totalUsed / totalAlloc * 100) : 0;
+                  %>
+                  <h3 class="mb-1"><%= usageRate.toFixed(1) %>%</h3>
+                  <small>전체 사용률</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <!-- 게임사별 포인트 사용률 차트 -->
           <div class="row mb-4">
             <div class="col-md-12">
@@ -149,9 +196,12 @@
       'rgba(153, 102, 255, 0.7)',
     ];
     
+    // PDF 내보내기 감지
+    const isPdfExport = <%= typeof exportToPdf !== 'undefined' && exportToPdf ? 'true' : 'false' %>;
+    
     // 게임사별 포인트 사용률 차트
     const pointsCtx = document.getElementById('pointsChart').getContext('2d');
-    new Chart(pointsCtx, {
+    const pointsChart = new Chart(pointsCtx, {
       type: 'bar',
       data: {
         labels: companies,
@@ -175,6 +225,9 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: {
+          duration: isPdfExport ? 0 : 1000 // PDF 내보내기 시 애니메이션 비활성화
+        },
         plugins: {
           tooltip: {
             callbacks: {
@@ -210,7 +263,7 @@
 
     // 서비스 부문별 포인트 사용 파이 차트
     const serviceCategoryCtx = document.getElementById('serviceCategoryChart').getContext('2d');
-    new Chart(serviceCategoryCtx, {
+    const serviceCategoryChart = new Chart(serviceCategoryCtx, {
       type: 'doughnut',
       data: {
         labels: serviceCategories,
@@ -223,9 +276,12 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: {
+          duration: isPdfExport ? 0 : 1000 // PDF 내보내기 시 애니메이션 비활성화
+        },
         plugins: {
           legend: {
-            position: 'right'
+            position: 'bottom'
           },
           tooltip: {
             callbacks: {
@@ -233,12 +289,21 @@
                 const label = context.label || '';
                 const value = context.raw.toLocaleString();
                 const percentage = categoryPercentages[context.dataIndex].toFixed(1);
-                return `${label}: ${value} (${percentage}%)`;
+                return `${label}: ${value} P (${percentage}%)`;
               }
             }
           }
         }
       }
     });
+    
+    // PDF 내보내기를 위한 차트 렌더링 완료 이벤트
+    if (isPdfExport) {
+      // 모든 차트가 렌더링 완료되었음을 알리는 이벤트 발생
+      window.addEventListener('load', function() {
+        // 차트 렌더링 완료 후 PDF 렌더링이 가능하도록 신호 전송
+        document.dispatchEvent(new Event('charts-rendered'));
+      });
+    }
   <% } %>
 </script> 

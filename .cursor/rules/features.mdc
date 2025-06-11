@@ -1,5 +1,30 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# 주요 기능
+
+이 프로젝트는 다음과 같은 주요 기능을 제공합니다:
+
+## 인증 및 권한 관리
+- 사용자 로그인 및 인증 관리
+- 역할 기반 접근 제어(어드민, 매니저, 담당자)
+- 보안 세션 관리
+
+## 데이터 동기화
+- Google Sheets와 데이터 동기화 (30분 간격)
+- 실시간 데이터 업데이트
+
+## 서비스 모니터링
+- 서비스 카테고리 모니터링: [check_service_categories.js](mdc:check_service_categories.js)
+- 계약 디버깅: [debug_contracts.js](mdc:debug_contracts.js), [debug_all_contracts.js](mdc:debug_all_contracts.js)
+- 게임 ID 할당 수정: [fix_assigned_game_ids.js](mdc:fix_assigned_game_ids.js)
+- 계약 수정: [fix_contracts.js](mdc:fix_contracts.js)
+
+## 알림 시스템
+- 자동 알림 체크 및 발송
+- 이메일 알림 서비스
+
+
+

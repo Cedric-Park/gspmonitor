@@ -35,7 +35,7 @@
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">전체 사용률</h6>
                     <small class="text-muted">
-                      <%= totalContractUsed.toLocaleString() %>원 / <%= totalAvailable.toLocaleString() %>원
+                      <%= totalContractUsed.toLocaleString() %> P / <%= totalAvailable.toLocaleString() %> P
                     </small>
                   </div>
                   <div class="progress mb-2" style="height: 12px;">
@@ -49,7 +49,7 @@
                   </div>
                   <div class="text-center">
                     <span class="badge bg-info">
-                      남은 포인트: <%= remainingPoints.toLocaleString() %>원
+                      남은 포인트: <%= remainingPoints.toLocaleString() %> P
                     </span>
                   </div>
                 </div>
@@ -60,9 +60,9 @@
                     <div class="card bg-light">
                       <div class="card-body text-center">
                         <h6 class="card-subtitle mb-2 text-muted">기본 포인트</h6>
-                        <h4 class="card-text"><%= totalBasePoints.toLocaleString() %>원</h4>
+                        <h4 class="card-text"><%= totalBasePoints.toLocaleString() %> P</h4>
                         <% if (totalUsageData && totalUsageData.base > 0) { %>
-                        <small class="text-muted">사용: <%= totalUsageData.base.toLocaleString() %>원</small>
+                        <small class="text-muted">사용: <%= totalUsageData.base.toLocaleString() %> P</small>
                         <% } %>
                       </div>
                     </div>
@@ -71,9 +71,9 @@
                     <div class="card bg-light">
                       <div class="card-body text-center">
                         <h6 class="card-subtitle mb-2 text-muted">자부담 포인트</h6>
-                        <h4 class="card-text"><%= totalSelfPoints.toLocaleString() %>원</h4>
+                        <h4 class="card-text"><%= totalSelfPoints.toLocaleString() %> P</h4>
                         <% if (totalUsageData && totalUsageData.self > 0) { %>
-                        <small class="text-muted">사용: <%= totalUsageData.self.toLocaleString() %>원</small>
+                        <small class="text-muted">사용: <%= totalUsageData.self.toLocaleString() %> P</small>
                         <% } %>
                       </div>
                     </div>
@@ -82,7 +82,7 @@
                     <div class="card bg-primary text-white">
                       <div class="card-body text-center">
                         <h6 class="card-subtitle mb-2">총 포인트</h6>
-                        <h4 class="card-text"><%= totalPoints.toLocaleString() %>원</h4>
+                        <h4 class="card-text"><%= totalPoints.toLocaleString() %> P</h4>
                         <small>사용 가능</small>
                       </div>
                     </div>
@@ -108,7 +108,7 @@
                         });
                       }
                     %>
-                    총 사용량: <%= categoryTotalUsed.toLocaleString() %>원
+                    총 사용량: <%= categoryTotalUsed.toLocaleString() %> P
                   </small>
                 </div>
               </div>
@@ -241,9 +241,7 @@
                     <td>
                       <% if (contract.contract_amount && contract.contract_amount.trim() !== '') { %>
                         <% 
-                          // 계약금액 포맷팅
                           let formattedAmount = contract.contract_amount;
-                          // 숫자 부분 추출 및 콤마 추가
                           const amountMatch = formattedAmount.match(/[\d,]+/);
                           if (amountMatch) {
                             const numberPart = amountMatch[0].replace(/,/g, '');
@@ -252,6 +250,8 @@
                               formattedAmount = formattedAmount.replace(amountMatch[0], formatted);
                             }
                           }
+                          // '원'을 'P'로 변경
+                          formattedAmount = formattedAmount.replace(/원$/, 'P');
                         %>
                         <%= formattedAmount %>
                       <% } else { %>
@@ -342,6 +342,8 @@
                                                 formattedAmount = formattedAmount.replace(amountMatch[0], formatted);
                                               }
                                             }
+                                            // '원'을 'P'로 변경
+                                            formattedAmount = formattedAmount.replace(/원$/, 'P');
                                           %>
                                           <%= formattedAmount %>
                                         <% } else { %>
@@ -433,7 +435,7 @@
                                             %>
                                               <tr>
                                                 <td><%= vendor %></td>
-                                                <td><%= amount %></td>
+                                                <td><%= amount.replace(/원$/, 'P') %></td>
                                                 <td><%= date %></td>
                                               </tr>
                                             <% } else { %>
@@ -570,7 +572,7 @@ document.addEventListener('DOMContentLoaded', function() {
               var label = context.label || '';
               var value = context.raw || 0;
               var percentage = Math.round((value / <%= totalPoints %>) * 100);
-              return label + ': ' + value.toLocaleString() + '원 (' + percentage + '%)';
+              return label + ': ' + value.toLocaleString() + ' P (' + percentage + '%)';
             }
           }
         }
