@@ -31,4 +31,8 @@ coverage/
 # 기타
 .tmp/
 temp/
-tmp/ 
+tmp/
+
+# 민감한 자격 증명 파일
+google_service_account.json
+credentials.json 
