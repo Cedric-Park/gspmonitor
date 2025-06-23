@@ -610,68 +610,62 @@ async function updatePointUsageDB() {
           // 반환된 계약코드를 DB에 저장
           const codeUpdatePromises = [];
           
-          for (let i = 0; i < contractsWithCodes.length; i++) {
-            const contract = contractsWithCodes[i];
-            if (!contract.pointUsageDBCode) {
-              // 새로 생성된 계약코드를 할당해야 함
-              // 모든 새 계약코드는 T로 시작하는 패턴을 따름
-              const nextCode = `T${(i + 1).toString().padStart(5, '0')}`;
+          if (result.contracts && result.contracts.length > 0) {
+            for (const updatedContract of result.contracts) {
+              // pointUsageDBCode가 새로 할당되었고, 기존 코드가 없던 계약만 업데이트
+              const originalContract = contractsWithCodes.find(c => c.contract_id === updatedContract.contract_id);
               
-              codeUpdatePromises.push(
-                new Promise((resolveUpdate, rejectUpdate) => {
-                  // 먼저 기존 메타데이터 확인
-                  db.get(
-                    `SELECT * FROM contract_meta WHERE contract_id = ?`,
-                    [contract.contract_id],
-                    (metaErr, metaRow) => {
-                      if (metaErr) {
-                        console.error(`계약 ${contract.contract_id}의 메타데이터 조회 오류:`, metaErr);
-                        rejectUpdate(metaErr);
-                        return;
-                      }
-                      
-                      if (metaRow) {
-                        // 기존 메타데이터 업데이트
-                        db.run(
-                          `UPDATE contract_meta SET point_usage_db_code = ?, updated_at = CURRENT_TIMESTAMP WHERE contract_id = ?`,
-                          [nextCode, contract.contract_id],
-                          (updateErr) => {
-                            if (updateErr) {
-                              console.error(`계약 ${contract.contract_id}의 코드 업데이트 오류:`, updateErr);
-                              rejectUpdate(updateErr);
-                              return;
+              if (updatedContract.pointUsageDBCode && (!originalContract || !originalContract.pointUsageDBCode)) {
+                codeUpdatePromises.push(
+                  new Promise((resolveUpdate, rejectUpdate) => {
+                    db.get(
+                      `SELECT * FROM contract_meta WHERE contract_id = ?`,
+                      [updatedContract.contract_id],
+                      (metaErr, metaRow) => {
+                        if (metaErr) {
+                          console.error(`계약 ${updatedContract.contract_id}의 메타데이터 조회 오류:`, metaErr);
+                          rejectUpdate(metaErr);
+                          return;
+                        }
+                        
+                        if (metaRow) {
+                          // 기존 메타데이터 업데이트
+                          db.run(
+                            `UPDATE contract_meta SET point_usage_db_code = ?, updated_at = CURRENT_TIMESTAMP WHERE contract_id = ?`,
+                            [updatedContract.pointUsageDBCode, updatedContract.contract_id],
+                            (updateErr) => {
+                              if (updateErr) rejectUpdate(updateErr);
+                              else resolveUpdate();
                             }
-                            resolveUpdate();
-                          }
-                        );
-                      } else {
-                        // 새 메타데이터 생성
-                        db.run(
-                          `INSERT INTO contract_meta (contract_id, point_usage_db_code) VALUES (?, ?)`,
-                          [contract.contract_id, nextCode],
-                          (insertErr) => {
-                            if (insertErr) {
-                              console.error(`계약 ${contract.contract_id}의 코드 삽입 오류:`, insertErr);
-                              rejectUpdate(insertErr);
-                              return;
+                          );
+                        } else {
+                          // 새 메타데이터 생성
+                          db.run(
+                            `INSERT INTO contract_meta (contract_id, point_usage_db_code) VALUES (?, ?)`,
+                            [updatedContract.contract_id, updatedContract.pointUsageDBCode],
+                            (insertErr) => {
+                              if (insertErr) rejectUpdate(insertErr);
+                              else resolveUpdate();
                             }
-                            resolveUpdate();
-                          }
-                        );
+                          );
+                        }
                       }
-                    }
-                  );
-                })
-              );
+                    );
+                  })
+                );
+              }
             }
           }
           
           await Promise.all(codeUpdatePromises);
           
+          // 응답에서 contracts 필드는 제외하고 반환
+          const { contracts: _, ...response } = result;
+          
           resolve({
             success: true,
             message: 'PointUsageDB 업데이트 완료',
-            ...result
+            ...response
           });
         } catch (processError) {
           console.error('PointUsageDB 업데이트 처리 오류:', processError);

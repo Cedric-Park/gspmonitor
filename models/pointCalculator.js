@@ -82,15 +82,6 @@ function getGamePointUsage(gameId) {
           return;
         }
         
-        // 모든 계약의 총 금액 계산 (자부담/기본 구분 없이)
-        let totalContractAmount = 0;
-        contracts.forEach(contract => {
-          const amount = parseContractAmount(contract.contract_amount);
-          if (amount > 0) {
-            totalContractAmount += amount;
-          }
-        });
-        
         // 자부담 우선 사용 계약들과 기본만 사용 계약들 분리
         let selfFirstContracts = [];
         let baseOnlyContracts = [];
@@ -147,9 +138,8 @@ function getGamePointUsage(gameId) {
           totalBaseUsed += baseOnlyDistribution.basePointsUsed;
         }
         
-        // 게임사 상세 페이지와 일치시키기 위해 총 계약 금액을 사용량으로 설정
         resolve({
-          totalUsed: totalContractAmount, // 계약 금액의 총합을 사용
+          totalUsed: totalSelfUsed + totalBaseUsed,
           selfUsed: totalSelfUsed,
           baseUsed: totalBaseUsed
         });
@@ -387,6 +377,82 @@ function getAllGamesPointUsageWithCategories() {
   });
 }
 
+/**
+ * 특정 게임의 모든 계약에 대해 포인트 사용량을 계산하고 DB에 저장
+ */
+function calculateAndSavePerContractUsage(gameId) {
+  return new Promise((resolve, reject) => {
+    // 1. 게임 정보 조회 (사용 가능 포인트)
+    db.get('SELECT id, base_points, self_points FROM games WHERE id = ?', [gameId], (err, game) => {
+      if (err || !game) {
+        return reject(err || new Error(`Game not found: ${gameId}`));
+      }
+
+      // 2. 해당 게임의 모든 확정 계약 조회
+      const contractsQuery = `
+        SELECT contract_id, contract_amount, use_self_points
+        FROM contracts
+        WHERE assigned_game_id = ? 
+          AND selected_vendor IS NOT NULL 
+          AND contract_amount IS NOT NULL 
+          AND contract_amount != ''
+      `;
+      db.all(contractsQuery, [gameId], (err, contracts) => {
+        if (err) return reject(err);
+
+        let availableBase = game.base_points || 0;
+        let availableSelf = game.self_points || 0;
+
+        const updates = [];
+        const selfFirstContracts = contracts.filter(c => c.use_self_points === 1);
+        const baseOnlyContracts = contracts.filter(c => c.use_self_points !== 1);
+
+        // 3. 자부담 우선 계약 처리
+        const totalSelfFirstAmount = selfFirstContracts.reduce((sum, c) => sum + parseContractAmount(c.contract_amount), 0);
+        const selfUsedForBlock = Math.min(totalSelfFirstAmount, availableSelf);
+        const baseUsedForBlock = Math.min(totalSelfFirstAmount - selfUsedForBlock, availableBase);
+        
+        availableSelf -= selfUsedForBlock;
+        availableBase -= baseUsedForBlock;
+
+        selfFirstContracts.forEach(c => {
+          const amount = parseContractAmount(c.contract_amount);
+          const proportion = totalSelfFirstAmount > 0 ? amount / totalSelfFirstAmount : 0;
+          const self_points_used = Math.round(selfUsedForBlock * proportion);
+          const base_points_used = Math.round(baseUsedForBlock * proportion);
+          updates.push({ id: c.contract_id, self: self_points_used, base: base_points_used });
+        });
+
+        // 4. 기본 우선 계약 처리
+        const totalBaseOnlyAmount = baseOnlyContracts.reduce((sum, c) => sum + parseContractAmount(c.contract_amount), 0);
+        const baseUsedForBaseBlock = Math.min(totalBaseOnlyAmount, availableBase);
+        
+        availableBase -= baseUsedForBaseBlock;
+
+        baseOnlyContracts.forEach(c => {
+          const amount = parseContractAmount(c.contract_amount);
+          const proportion = totalBaseOnlyAmount > 0 ? amount / totalBaseOnlyAmount : 0;
+          const base_points_used = Math.round(baseUsedForBaseBlock * proportion);
+          updates.push({ id: c.contract_id, self: 0, base: base_points_used });
+        });
+
+        // 5. DB 업데이트 실행
+        const promises = updates.map(u => {
+          return new Promise((res, rej) => {
+            db.run(
+              'UPDATE contracts SET self_points_used = ?, base_points_used = ? WHERE contract_id = ?',
+              [u.self, u.base, u.id],
+              (err) => (err ? rej(err) : res())
+            );
+          });
+        });
+
+        Promise.all(promises).then(resolve).catch(reject);
+      });
+    });
+  });
+}
+
 module.exports = {
   parseContractAmount,
   calculatePointsDistribution,
@@ -396,5 +462,6 @@ module.exports = {
   getAllGamesPointUsageWithCategories,
   toggleSelfPointsUsage,
   assignPointsToContract,
-  unassignPointsFromContract
+  unassignPointsFromContract,
+  calculateAndSavePerContractUsage
 }; 

@@ -456,7 +456,7 @@ async function updatePointUsageDB(contracts) {
     // 기존 PointUsageDB 데이터 가져오기
     const existingData = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${sheetName}!A:W`,  // 전체 데이터 범위
+      range: `${sheetName}!A:Z`,  // 전체 데이터 범위 (W -> Z로 확장)
     });
 
     const rows = existingData.data.values || [];
@@ -496,6 +496,7 @@ async function updatePointUsageDB(contracts) {
     // 업데이트할 데이터 준비
     const updates = [];
     const newRows = [];
+    const processedContracts = [];
     
     for (const contract of contracts) {
       // 계약 데이터를 PointUsageDB 형식으로 변환
@@ -515,12 +516,18 @@ async function updatePointUsageDB(contracts) {
       
       // 계약코드 설정
       rowData[contractCodeIndex] = contractCode;
+
+      // 처리된 계약 정보 저장 (새 계약코드 포함)
+      processedContracts.push({
+        ...contract,
+        pointUsageDBCode: contractCode
+      });
       
       // 이 계약코드가 이미 존재하는지 확인
       if (existingContractCodes[contractCode] !== undefined) {
         // 기존 데이터 업데이트
         const rowIndex = existingContractCodes[contractCode];
-        const range = `${sheetName}!A${rowIndex + 1}:W${rowIndex + 1}`;
+        const range = `${sheetName}!A${rowIndex + 1}:Z${rowIndex + 1}`; // 범위 확장
         
         // 기존 행과 새 행이 다른지 확인
         const existingRow = rows[rowIndex];
@@ -566,7 +573,7 @@ async function updatePointUsageDB(contracts) {
     if (newRows.length > 0) {
       appendResults = await sheets.spreadsheets.values.append({
         spreadsheetId: sheetId,
-        range: `${sheetName}!A:W`,
+        range: `${sheetName}!A:Z`, // 범위 확장
         valueInputOption: 'USER_ENTERED',
         resource: {
           values: newRows
@@ -580,7 +587,8 @@ async function updatePointUsageDB(contracts) {
       message: 'PointUsageDB 업데이트 완료',
       updatedRows: updateResults.updatedRows || 0,
       appendedRows: newRows.length,
-      nextContractCode: `T${nextContractNumber.toString().padStart(5, '0')}`
+      nextContractCode: `T${nextContractNumber.toString().padStart(5, '0')}`,
+      contracts: processedContracts // 처리된 계약 목록 반환
     };
   } catch (error) {
     console.error('PointUsageDB 업데이트 오류:', error);
