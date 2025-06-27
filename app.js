@@ -32,11 +32,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 세션 설정
 app.use(session({
   secret: 'gamepoint-monitoring-secret-key',
-  resave: false,
-  saveUninitialized: false,
+  resave: true,
+  saveUninitialized: true,
   cookie: { 
     maxAge: 3600000, // 1시간
-    secure: isVercel ? 'auto' : false // Vercel에서는 자동으로 secure 설정
+    secure: isVercel ? 'auto' : false, // Vercel에서는 자동으로 secure 설정
+    httpOnly: true
   }
 }));
 

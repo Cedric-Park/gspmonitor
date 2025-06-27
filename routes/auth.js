@@ -29,12 +29,21 @@ router.post('/login', async (req, res) => {
     
     // 입력값 확인
     if (!email || !password) {
+      console.log('이메일 또는 비밀번호 누락');
       req.flash('error', '이메일과 비밀번호를 모두 입력해주세요.');
       return res.redirect('/auth/login');
     }
     
     // 사용자 인증
-    const result = await authModel.authenticateUser(email, password);
+    console.log('인증 모듈 호출 전');
+    let result;
+    try {
+      result = await authModel.authenticateUser(email, password);
+      console.log('인증 모듈 호출 완료');
+    } catch (authError) {
+      console.error('인증 모듈 오류:', authError);
+      throw authError;
+    }
     
     console.log('인증 결과:', result.authenticated ? '성공' : '실패', result.message || '');
     
@@ -44,22 +53,47 @@ router.post('/login', async (req, res) => {
     }
     
     // 세션에 사용자 정보 저장
-    req.session.user = {
-      id: result.user.id || result.user._id.toString(), // MongoDB는 _id를 사용
-      name: result.user.name,
-      email: result.user.email,
-      role: result.user.role
-    };
-    
-    console.log('세션에 저장된 사용자 정보:', req.session.user);
-    
-    // 초기 비밀번호 사용 중인 경우 비밀번호 변경 페이지로 리디렉션
-    if (result.needsPasswordChange) {
-      req.flash('info', '초기 비밀번호를 사용 중입니다. 보안을 위해 비밀번호를 변경해주세요.');
-      return res.redirect('/auth/change-password');
+    try {
+      console.log('세션에 사용자 정보 저장 시도');
+      const userId = result.user.id || (result.user._id ? result.user._id.toString() : null);
+      
+      if (!userId) {
+        console.error('사용자 ID가 없음:', result.user);
+        throw new Error('사용자 ID가 없습니다.');
+      }
+      
+      req.session.user = {
+        id: userId,
+        name: result.user.name,
+        email: result.user.email,
+        role: result.user.role
+      };
+      
+      console.log('세션에 저장된 사용자 정보:', req.session.user);
+      
+      // 세션 저장 확인
+      req.session.save(err => {
+        if (err) {
+          console.error('세션 저장 오류:', err);
+          throw err;
+        }
+        
+        console.log('세션 저장 완료');
+        
+        // 초기 비밀번호 사용 중인 경우 비밀번호 변경 페이지로 리디렉션
+        if (result.needsPasswordChange) {
+          console.log('초기 비밀번호 사용 중, 비밀번호 변경 페이지로 리디렉션');
+          req.flash('info', '초기 비밀번호를 사용 중입니다. 보안을 위해 비밀번호를 변경해주세요.');
+          return res.redirect('/auth/change-password');
+        }
+        
+        console.log('로그인 성공, 메인 페이지로 리디렉션');
+        res.redirect('/');
+      });
+    } catch (sessionError) {
+      console.error('세션 처리 오류:', sessionError);
+      throw sessionError;
     }
-    
-    res.redirect('/');
   } catch (error) {
     console.error('로그인 처리 오류:', error);
     req.flash('error', '로그인 처리 중 오류가 발생했습니다.');
