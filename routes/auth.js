@@ -42,7 +42,8 @@ router.post('/login', async (req, res) => {
       console.log('인증 모듈 호출 완료');
     } catch (authError) {
       console.error('인증 모듈 오류:', authError);
-      throw authError;
+      req.flash('error', '인증 과정에서 오류가 발생했습니다.');
+      return res.redirect('/auth/login');
     }
     
     console.log('인증 결과:', result.authenticated ? '성공' : '실패', result.message || '');
@@ -59,45 +60,37 @@ router.post('/login', async (req, res) => {
       
       if (!userId) {
         console.error('사용자 ID가 없음:', result.user);
-        throw new Error('사용자 ID가 없습니다.');
+        req.flash('error', '사용자 ID를 찾을 수 없습니다.');
+        return res.redirect('/auth/login');
       }
       
+      // 세션에 최소한의 필요한 정보만 저장
       req.session.user = {
         id: userId,
-        name: result.user.name,
+        name: result.user.name || '사용자',
         email: result.user.email,
-        role: result.user.role
+        role: result.user.role || '사용자'
       };
       
-      console.log('세션에 저장된 사용자 정보:', req.session.user);
+      // 초기 비밀번호 사용 중인 경우 비밀번호 변경 페이지로 리디렉션
+      if (result.needsPasswordChange) {
+        console.log('초기 비밀번호 사용 중, 비밀번호 변경 페이지로 리디렉션');
+        req.flash('info', '초기 비밀번호를 사용 중입니다. 보안을 위해 비밀번호를 변경해주세요.');
+        return res.redirect('/auth/change-password');
+      }
       
-      // 세션 저장 확인
-      req.session.save(err => {
-        if (err) {
-          console.error('세션 저장 오류:', err);
-          throw err;
-        }
-        
-        console.log('세션 저장 완료');
-        
-        // 초기 비밀번호 사용 중인 경우 비밀번호 변경 페이지로 리디렉션
-        if (result.needsPasswordChange) {
-          console.log('초기 비밀번호 사용 중, 비밀번호 변경 페이지로 리디렉션');
-          req.flash('info', '초기 비밀번호를 사용 중입니다. 보안을 위해 비밀번호를 변경해주세요.');
-          return res.redirect('/auth/change-password');
-        }
-        
-        console.log('로그인 성공, 메인 페이지로 리디렉션');
-        res.redirect('/');
-      });
+      console.log('로그인 성공, 메인 페이지로 리디렉션');
+      return res.redirect('/');
+      
     } catch (sessionError) {
       console.error('세션 처리 오류:', sessionError);
-      throw sessionError;
+      req.flash('error', '세션 처리 중 오류가 발생했습니다.');
+      return res.redirect('/auth/login');
     }
   } catch (error) {
     console.error('로그인 처리 오류:', error);
     req.flash('error', '로그인 처리 중 오류가 발생했습니다.');
-    res.redirect('/auth/login');
+    return res.redirect('/auth/login');
   }
 });
 

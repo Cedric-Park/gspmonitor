@@ -28,9 +28,8 @@ async function authenticateUser(email, password) {
     const managersCollection = db.collection('managers');
     console.log('managers 컬렉션 접근');
     
-    // 사용자 조회
+    // 사용자 조회 - 이메일로 찾기
     const user = await managersCollection.findOne({ email });
-    console.log('사용자 조회 결과:', user ? '사용자 찾음' : '사용자 없음');
     
     if (!user) {
       console.log('사용자를 찾을 수 없음:', email);
@@ -38,49 +37,41 @@ async function authenticateUser(email, password) {
     }
     
     console.log('MongoDB에서 사용자 찾음:', email);
-    console.log('사용자 정보:', {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      passwordType: typeof user.password,
-      passwordLength: user.password.length,
-      passwordStartsWith: user.password.substring(0, 3)
-    });
     
-    // 초기 비밀번호(1234) 처리
+    // 비밀번호 검증 - 초기 비밀번호(1234) 처리
     if (password === '1234' && user.password === '1234') {
       console.log('초기 비밀번호 인증 성공');
-      return { authenticated: true, user, needsPasswordChange: true };
+      return { 
+        authenticated: true, 
+        user: {
+          _id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role
+        }, 
+        needsPasswordChange: true 
+      };
     }
     
-    // bcrypt로 해시된 비밀번호인지 확인
-    if (user.password.startsWith('$2')) {
-      console.log('해시된 비밀번호 비교 시도');
-      // 해시된 비밀번호 비교
-      try {
-        const match = await bcrypt.compare(password, user.password);
-        console.log('비밀번호 비교 결과:', match ? '일치' : '불일치');
-        if (match) {
-          return { authenticated: true, user };
-        } else {
-          return { authenticated: false, message: '비밀번호가 일치하지 않습니다.' };
-        }
-      } catch (bcryptError) {
-        console.error('bcrypt 비교 오류:', bcryptError);
-        throw bcryptError;
-      }
-    } else {
-      console.log('평문 비밀번호 비교');
-      // 평문 비밀번호 비교 (초기 비밀번호 등)
-      if (password === user.password) {
-        console.log('평문 비밀번호 일치');
-        return { authenticated: true, user, needsPasswordChange: true };
-      } else {
-        console.log('평문 비밀번호 불일치');
-        return { authenticated: false, message: '비밀번호가 일치하지 않습니다.' };
-      }
+    // 비밀번호 검증 - 평문 비밀번호
+    if (user.password === password) {
+      console.log('평문 비밀번호 인증 성공');
+      return { 
+        authenticated: true, 
+        user: {
+          _id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role
+        }, 
+        needsPasswordChange: true 
+      };
     }
+    
+    // 비밀번호 불일치
+    console.log('비밀번호 불일치');
+    return { authenticated: false, message: '비밀번호가 일치하지 않습니다.' };
+    
   } catch (error) {
     console.error('MongoDB 인증 오류:', error);
     throw error;

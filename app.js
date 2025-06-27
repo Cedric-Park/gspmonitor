@@ -3,6 +3,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const flash = require('connect-flash');
 const schedule = require('node-schedule');
 const notificationModel = require('./models/notification');
@@ -15,6 +16,9 @@ const isVercel = process.env.VERCEL === '1';
 const db = isVercel ? require('./db/mongodb') : require('./db/database');
 const authModel = isVercel ? require('./models/mongoAuth') : require('./models/auth');
 const gameModel = require('./models/game');
+
+// MongoDB 연결 문자열
+const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://rionaid81:roU7EBn1uTVy7Z0G@cluster01.kjpr3ku.mongodb.net/game_points?retryWrites=true&w=majority&appName=Cluster01';
 
 // Express 애플리케이션 생성
 const app = express();
@@ -32,8 +36,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 세션 설정
 app.use(session({
   secret: 'gamepoint-monitoring-secret-key',
-  resave: true,
-  saveUninitialized: true,
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: mongoUri,
+    ttl: 60 * 60, // 1시간
+    autoRemove: 'native',
+    touchAfter: 24 * 3600, // 24시간마다 세션 업데이트
+    crypto: {
+      secret: 'gamepoint-session-secret'
+    }
+  }),
   cookie: { 
     maxAge: 3600000, // 1시간
     secure: isVercel ? 'auto' : false, // Vercel에서는 자동으로 secure 설정
