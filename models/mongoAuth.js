@@ -30,21 +30,29 @@ async function authenticateUser(email, password) {
       return { authenticated: false, message: '사용자를 찾을 수 없습니다.' };
     }
     
-    // 초기 비밀번호(1234)인 경우 평문 비교
-    if (user.password === '1234') {
-      if (password === '1234') {
+    console.log('MongoDB에서 사용자 찾음:', email);
+    
+    // 초기 비밀번호(1234) 처리
+    if (password === '1234' && user.password === '1234') {
+      return { authenticated: true, user, needsPasswordChange: true };
+    }
+    
+    // bcrypt로 해시된 비밀번호인지 확인
+    if (user.password.startsWith('$2')) {
+      // 해시된 비밀번호 비교
+      const match = await bcrypt.compare(password, user.password);
+      if (match) {
+        return { authenticated: true, user };
+      } else {
+        return { authenticated: false, message: '비밀번호가 일치하지 않습니다.' };
+      }
+    } else {
+      // 평문 비밀번호 비교 (초기 비밀번호 등)
+      if (password === user.password) {
         return { authenticated: true, user, needsPasswordChange: true };
       } else {
         return { authenticated: false, message: '비밀번호가 일치하지 않습니다.' };
       }
-    }
-    
-    // 해시된 비밀번호 비교
-    const match = await bcrypt.compare(password, user.password);
-    if (match) {
-      return { authenticated: true, user };
-    } else {
-      return { authenticated: false, message: '비밀번호가 일치하지 않습니다.' };
     }
   } catch (error) {
     console.error('인증 오류:', error);

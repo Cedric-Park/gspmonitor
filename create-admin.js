@@ -32,14 +32,13 @@ async function createAdminUser() {
       return;
     }
 
-    // 비밀번호 해싱
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash('1234', saltRounds);
+    // 초기 비밀번호는 평문으로 저장 (1234)
+    const initialPassword = '1234';
 
     // 어드민 사용자 생성
     const adminUser = {
       email: adminEmail,
-      password: hashedPassword,
+      password: initialPassword, // 평문 비밀번호
       name: '박종철',
       role: '어드민',
       created_at: new Date(),

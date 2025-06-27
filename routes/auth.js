@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const authModel = require('../models/auth');
+const dotenv = require('dotenv');
+
+// 환경 변수 설정
+dotenv.config();
+
+// 환경에 따라 다른 인증 모델 사용
+const isVercel = process.env.VERCEL === '1';
+const authModel = isVercel ? require('../models/mongoAuth') : require('../models/auth');
 
 // 로그인 페이지
 router.get('/login', (req, res) => {
@@ -18,6 +25,8 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    console.log('로그인 시도:', email);
+    
     // 입력값 확인
     if (!email || !password) {
       req.flash('error', '이메일과 비밀번호를 모두 입력해주세요.');
@@ -27,6 +36,8 @@ router.post('/login', async (req, res) => {
     // 사용자 인증
     const result = await authModel.authenticateUser(email, password);
     
+    console.log('인증 결과:', result.authenticated ? '성공' : '실패', result.message || '');
+    
     if (!result.authenticated) {
       req.flash('error', result.message);
       return res.redirect('/auth/login');
@@ -34,11 +45,13 @@ router.post('/login', async (req, res) => {
     
     // 세션에 사용자 정보 저장
     req.session.user = {
-      id: result.user.id,
+      id: result.user.id || result.user._id.toString(), // MongoDB는 _id를 사용
       name: result.user.name,
       email: result.user.email,
       role: result.user.role
     };
+    
+    console.log('세션에 저장된 사용자 정보:', req.session.user);
     
     // 초기 비밀번호 사용 중인 경우 비밀번호 변경 페이지로 리디렉션
     if (result.needsPasswordChange) {
@@ -118,6 +131,15 @@ router.get('/logout', (req, res) => {
       console.error('세션 삭제 오류:', err);
     }
     res.redirect('/auth/login');
+  });
+});
+
+// 디버그 경로 - 세션 정보 확인
+router.get('/debug-session', (req, res) => {
+  res.json({
+    sessionExists: !!req.session,
+    user: req.session.user || null,
+    sessionID: req.sessionID
   });
 });
 

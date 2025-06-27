@@ -36,7 +36,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     maxAge: 3600000, // 1시간
-    secure: isVercel // Vercel에서는 HTTPS를 사용하므로 secure 쿠키 사용
+    secure: isVercel ? 'auto' : false // Vercel에서는 자동으로 secure 설정
   }
 }));
 
