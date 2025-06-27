@@ -83,10 +83,10 @@
                     <div class="mb-3">
                       <% 
                         // 사용률 계산 방식 수정: 계약 금액을 기준으로 사용률 계산
-                        // 기존: const usagePercent = game.totalPoints > 0 ? (game.pointsUsed.total / game.totalPoints * 100) : 0;
+                        // 상세 페이지와 동일한 방식으로 계산
                         
-                        // 계약 금액은 pointsUsed.total과 동일한 값을 사용
-                        const totalContractUsed = game.pointsUsed.total;
+                        // 계약 금액을 사용하여 사용률 계산
+                        const totalContractUsed = game.contractAmount || 0;
                         const totalAvailable = game.totalPoints;
                         const usagePercent = totalAvailable > 0 ? (totalContractUsed / totalAvailable * 100) : 0;
                         

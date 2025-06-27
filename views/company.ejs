@@ -230,7 +230,8 @@
                         contract.status === '견적요청' ? 'bg-primary' : 
                         contract.status === '견적서 제출' ? 'bg-success' : 
                         contract.status === '선정완료' ? 'bg-warning' : 
-                        contract.status === '계약완료' ? 'bg-info' : 'bg-secondary' 
+                        contract.status === '계약완료' ? 'bg-info' : 
+                        contract.status === '최종계약체결' ? 'bg-danger' : 'bg-secondary' 
                       %>">
                         <%= contract.status %>
                       </span>

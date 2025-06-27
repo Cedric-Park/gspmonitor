@@ -5,6 +5,7 @@ const managerModel = require('../models/manager');
 const statisticsModel = require('../models/statistics');
 const puppeteer = require('puppeteer');
 const db = require('../db/database');
+const pointCalculator = require('../models/pointCalculator');
 
 // 권한 체크 미들웨어
 function checkAdminManagerRole(req, res, next) {
@@ -53,11 +54,51 @@ router.get('/', async (req, res) => {
       gamesWithCategoryUsage = await gameModel.getAllGamesWithPointUsageAndCategories();
     }
     
-    // 사용률 기준으로 내림차순 정렬 (사용률이 높은 순으로)
+    // 각 게임사별 계약 금액 합계 계산
     if (gamesWithCategoryUsage && gamesWithCategoryUsage.length > 0) {
+      // 게임사별 계약 정보 조회
+      const companyContractData = {};
+      
+      // 모든 게임사의 계약 정보 가져오기
+      const allCompanies = [...new Set(gamesWithCategoryUsage.map(game => game.companyName))];
+      
+      for (const companyName of allCompanies) {
+        const contracts = await gameModel.getContractsByCompany(companyName) || [];
+        let totalContractAmount = 0;
+        
+        // 전체 계약 금액 합산
+        if (contracts && contracts.length > 0) {
+          contracts.forEach(contract => {
+            // 계약완료 상태인 계약만 합산
+            if (contract.contract_amount && contract.selected_vendor && contract.status === '최종계약체결') {
+              const amount = pointCalculator.parseContractAmount(contract.contract_amount);
+              if (amount > 0) {
+                totalContractAmount += amount;
+              }
+            }
+          });
+        }
+        
+        companyContractData[companyName] = {
+          totalContractAmount,
+          contracts
+        };
+      }
+      
+      // 게임 데이터에 계약 금액 정보 추가
+      gamesWithCategoryUsage = gamesWithCategoryUsage.map(game => {
+        const companyData = companyContractData[game.companyName] || { totalContractAmount: 0 };
+        return {
+          ...game,
+          contractAmount: companyData.totalContractAmount
+        };
+      });
+      
+      // 사용률 기준으로 내림차순 정렬 (사용률이 높은 순으로)
       gamesWithCategoryUsage.sort((a, b) => {
-        const usageRateA = a.totalPoints > 0 ? (a.pointsUsed.total / a.totalPoints * 100) : 0;
-        const usageRateB = b.totalPoints > 0 ? (b.pointsUsed.total / b.totalPoints * 100) : 0;
+        // 상세 페이지와 동일한 방식으로 사용률 계산
+        const usageRateA = a.totalPoints > 0 ? (a.contractAmount / a.totalPoints * 100) : 0;
+        const usageRateB = b.totalPoints > 0 ? (b.contractAmount / b.totalPoints * 100) : 0;
         return usageRateB - usageRateA; // 내림차순 정렬
       });
     }

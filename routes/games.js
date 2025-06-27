@@ -59,7 +59,8 @@ router.get('/company/:companyName', async (req, res) => {
       // 전체 계약 금액 합산 (자부담/기본 구분 없이)
       if (contracts && contracts.length > 0) {
         contracts.forEach(contract => {
-          if (contract.contract_amount && contract.selected_vendor) {
+          // 계약완료 상태인 계약만 합산
+          if (contract.contract_amount && contract.selected_vendor && contract.status === '최종계약체결') {
             // pointCalculator의 parseContractAmount 함수를 사용하기 위해 모듈 임포트 필요
             const pointCalculator = require('../models/pointCalculator');
             const amount = pointCalculator.parseContractAmount(contract.contract_amount);
