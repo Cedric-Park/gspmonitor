@@ -6,15 +6,15 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const schedule = require('node-schedule');
 const notificationModel = require('./models/notification');
-const authModel = require('./models/auth');
-const gameModel = require('./models/game');
 
 // 환경 변수 설정
 dotenv.config();
 
-// 환경에 따라 다른 데이터베이스 모듈 사용
+// 환경에 따라 다른 데이터베이스와 인증 모듈 사용
 const isVercel = process.env.VERCEL === '1';
 const db = isVercel ? require('./db/mongodb') : require('./db/database');
+const authModel = isVercel ? require('./models/mongoAuth') : require('./models/auth');
+const gameModel = require('./models/game');
 
 // Express 애플리케이션 생성
 const app = express();
