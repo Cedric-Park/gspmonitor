@@ -57,16 +57,6 @@ app.use((req, res, next) => {
 
 // 인증 미들웨어
 const ensureAuthenticated = (req, res, next) => {
-  // Vercel 환경에서 테스트를 위해 인증 우회 (나중에 제거)
-  if (isVercel) {
-    req.session.user = {
-      id: 1,
-      username: 'admin',
-      role: '어드민'
-    };
-    return next();
-  }
-
   if (req.session.user) {
     return next();
   }
@@ -76,11 +66,6 @@ const ensureAuthenticated = (req, res, next) => {
 // 권한 검사 미들웨어
 const checkRole = (roles) => {
   return (req, res, next) => {
-    // Vercel 환경에서 테스트를 위해 권한 검사 우회 (나중에 제거)
-    if (isVercel) {
-      return next();
-    }
-
     if (!req.session.user) {
       return res.redirect('/auth/login');
     }
