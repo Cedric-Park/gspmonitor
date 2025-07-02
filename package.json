@@ -6,6 +6,14 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
+    "tunnel": "lt --port 3000 --subdomain monitoring-app",
+    "start:tunnel": "concurrently \"npm start\" \"npm run tunnel\"",
+    "tunnel:auth": "node lt-config.js",
+    "start:tunnel:auth": "concurrently \"npm start\" \"npm run tunnel:auth\"",
+    "auth-tunnel": "node lt-auth.js",
+    "start:auth-tunnel": "concurrently \"npm start\" \"npm run auth-tunnel\"",
+    "telegram-tunnel": "node lt-auth.js",
+    "start:telegram": "concurrently \"npm start\" \"npm run telegram-tunnel\"",
     "vercel-build": "echo 'Vercel build completed'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -17,19 +25,23 @@
     "bcrypt": "^6.0.0",
     "chart.js": "^4.4.0",
     "connect-flash": "^0.1.1",
+    "connect-mongo": "^5.1.0",
     "dotenv": "^16.3.1",
     "ejs": "^3.1.9",
     "express": "^4.18.2",
+    "express-basic-auth": "^1.2.1",
     "express-ejs-layouts": "^2.5.1",
     "express-session": "^1.18.1",
     "googleapis": "^126.0.1",
     "mongodb": "^6.17.0",
     "node-schedule": "^2.1.1",
+    "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^6.9.7",
     "puppeteer": "^24.10.0",
     "sqlite3": "^5.1.6"
   },
   "devDependencies": {
+    "concurrently": "^9.2.0",
     "nodemon": "^3.0.1"
   }
 }
