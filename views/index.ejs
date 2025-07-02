@@ -69,12 +69,12 @@
                       </div>
                       <div class="col-4">
                         <div class="border-end">
-                          <h5 class="text-danger mb-0"><%= (game.pointsUsed.total / 1000000).toFixed(0) %>M</h5>
+                          <h5 class="text-danger mb-0"><%= ((game.contractAmount || 0) / 1000000).toFixed(0) %>M</h5>
                           <small class="text-muted">사용</small>
                         </div>
                       </div>
                       <div class="col-4">
-                        <h5 class="text-success mb-0"><%= (game.remainingPoints.total / 1000000).toFixed(0) %>M</h5>
+                        <h5 class="text-success mb-0"><%= (Math.max(0, game.totalPoints - (game.contractAmount || 0)) / 1000000).toFixed(0) %>M</h5>
                         <small class="text-muted">잔여</small>
                       </div>
                     </div>
@@ -189,7 +189,7 @@
   <% 
     // 전체 통계 계산
     let totalAllocated = 0;
-    let totalUsed = 0;
+    let totalContractUsed = 0;
     let categoryTotals = {
       '게임 서비스': 0,
       '마케팅': 0,
@@ -200,7 +200,8 @@
     
     gamesWithCategoryUsage.forEach(game => {
       totalAllocated += game.totalPoints;
-      totalUsed += game.pointsUsed.total;
+      // 계약 금액 기준으로 사용량 계산
+      totalContractUsed += (game.contractAmount || 0);
       
       Object.keys(game.categoryUsage).forEach(category => {
         if (['게임 서비스', '마케팅', '인프라', '컨설팅'].includes(category)) {
