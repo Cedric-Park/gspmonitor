@@ -271,6 +271,7 @@ function getGamePointUsageByServiceCategory(gameId) {
         AND selected_vendor IS NOT NULL 
         AND contract_amount IS NOT NULL 
         AND contract_amount != ''
+        AND status = '최종계약체결'
     `;
     
     db.all(contractsQuery, [gameId], (err, contracts) => {

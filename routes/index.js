@@ -628,6 +628,63 @@ router.get('/sync', async (req, res) => {
   }
 });
 
+// 성과 현황 데이터 동기화 기능
+router.get('/sync-performance', async (req, res) => {
+  try {
+    // 어드민만 사용 가능한 기능으로 제한
+    if (req.session.user.role !== '어드민') {
+      return res.status(403).render('error', {
+        title: '접근 제한',
+        message: '이 기능을 사용할 권한이 없습니다.',
+        error: { status: 403 }
+      });
+    }
+    
+    // 성과 현황 데이터 동기화 실행
+    const result = await statisticsModel.syncGamePerformanceData();
+    
+    // 성공 시 원래 페이지로 리다이렉트
+    const redirectUrl = req.query.from ? req.query.from : '/?sync-performance=success';
+    res.redirect(redirectUrl);
+  } catch (error) {
+    console.error('성과 현황 데이터 동기화 에러:', error);
+    res.status(500).render('error', {
+      title: '성과 현황 데이터 동기화 오류',
+      message: '성과 현황 데이터 동기화 중 오류가 발생했습니다.',
+      error
+    });
+  }
+});
+
+// 성과 현황 데이터 동기화 기능 (POST 방식)
+router.post('/sync-performance', async (req, res) => {
+  try {
+    // 어드민만 사용 가능한 기능으로 제한
+    if (req.session.user && req.session.user.role !== '어드민') {
+      return res.status(403).json({
+        success: false,
+        message: '이 기능을 사용할 권한이 없습니다.'
+      });
+    }
+    
+    // 로그 추가
+    console.log(`어드민 사용자(${req.session.user ? req.session.user.email : 'API 호출'})가 성과 현황 데이터 동기화 요청`);
+    
+    // 성과 현황 데이터 동기화 실행
+    const result = await statisticsModel.syncGamePerformanceData();
+    
+    // JSON 응답 반환
+    res.json(result);
+  } catch (error) {
+    console.error('성과 현황 데이터 동기화 에러:', error);
+    res.status(500).json({
+      success: false,
+      message: '성과 현황 데이터 동기화 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
 // PointUsageDB 업데이트 기능
 router.get('/update-point-usage-db', async (req, res) => {
   try {

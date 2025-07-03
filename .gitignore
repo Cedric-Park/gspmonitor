@@ -35,4 +35,7 @@ tmp/
 
 # 민감한 자격 증명 파일
 google_service_account.json
-credentials.json 
+credentials.json
+
+# 추가된 환경 변수 파일
+.vercel 

@@ -6,6 +6,7 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const schedule = require('node-schedule');
 const notificationModel = require('./models/notification');
+const basicAuth = require('express-basic-auth');
 
 // 환경 변수 설정
 dotenv.config();
@@ -18,7 +19,19 @@ const gameModel = require('./models/game');
 
 // Express 애플리케이션 생성
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
+
+// 기본 인증 설정 (HTTP Basic Authentication)
+// 이 부분을 활성화하면 모든 경로에 인증이 필요합니다
+const useBasicAuth = process.env.USE_BASIC_AUTH === 'true';
+if (useBasicAuth) {
+  app.use(basicAuth({
+    users: { 'admin': 'secure123' },
+    challenge: true,
+    realm: 'Game Point Monitoring'
+  }));
+  console.log('기본 인증(HTTP Basic Auth)이 활성화되었습니다.');
+}
 
 // 미들웨어 설정
 app.use(express.json());
@@ -196,7 +209,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
 // 개발 환경에서만 서버를 시작합니다
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`서버가 http://localhost:${PORT} 에서 실행 중입니다.`);
+    console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
   });
 }
 

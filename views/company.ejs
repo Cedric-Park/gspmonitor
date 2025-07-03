@@ -490,6 +490,84 @@
   </div>
 </div>
 
+<!-- 글로벌 성과 현황 섹션 추가 -->
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><%= companyName %> 글로벌 성과 현황</h5>
+      </div>
+      <div class="card-body">
+        <!-- 필터링 컨트롤 -->
+        <div class="row mb-4">
+          <div class="col-md-4 mb-3">
+            <!-- 지표 선택 버튼 그룹 -->
+            <div class="btn-group" role="group" aria-label="지표 선택">
+              <input type="radio" class="btn-check" name="metricRadio" id="metricRevenue" value="revenue" checked>
+              <label class="btn btn-outline-primary" for="metricRevenue">매출</label>
+              
+              <input type="radio" class="btn-check" name="metricRadio" id="metricDownloads" value="downloads">
+              <label class="btn btn-outline-primary" for="metricDownloads">다운로드</label>
+              
+              <input type="radio" class="btn-check" name="metricRadio" id="metricDau" value="dau">
+              <label class="btn btn-outline-primary" for="metricDau">DAU</label>
+              
+              <input type="radio" class="btn-check" name="metricRadio" id="metricWishlist" value="wishlist">
+              <label class="btn btn-outline-primary" for="metricWishlist">위시리스트</label>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="input-group">
+              <label class="input-group-text" for="startDate">기간 선택</label>
+              <input type="date" class="form-control" id="startDate">
+              <span class="input-group-text">~</span>
+              <input type="date" class="form-control" id="endDate">
+              <button class="btn btn-outline-primary" id="applyDateFilter">적용</button>
+            </div>
+          </div>
+        </div>
+        
+        <div id="performanceChartContainer">
+          <canvas id="performanceChart" height="300"></canvas>
+        </div>
+        
+        <!-- 누적 데이터 표시 섹션 추가 -->
+        <div class="row mt-4" id="accumulatedDataContainer">
+          <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-body p-4 d-flex flex-column">
+                <h5 class="card-title text-muted mb-3">글로벌</h5>
+                <h2 class="card-text fw-bold mb-0" id="globalAccumulatedValue">0</h2>
+                <p class="card-text mt-2 mt-auto"><span id="globalChangeRate" class="badge rounded-pill"></span></p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-body p-4 d-flex flex-column">
+                <h5 class="card-title text-muted mb-3">진출국가</h5>
+                <h2 class="card-text fw-bold mb-0" id="targetAccumulatedValue">0</h2>
+                <p class="card-text mt-2 mt-auto"><span id="targetChangeRate" class="badge rounded-pill"></span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-3">
+          <p class="text-muted"><small>* 성과 현황 데이터는 매일 자동으로 업데이트됩니다. <span id="lastUpdateInfo"></span></small></p>
+          <% if (userRole === '어드민') { %>
+          <div class="text-end">
+            <a href="/sync-performance?from=<%= encodeURIComponent('/games/company/' + companyName) %>" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-arrow-repeat"></i> 성과 현황 데이터 동기화
+            </a>
+          </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // 서비스 부문별 사용량 차트 생성
@@ -665,6 +743,427 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   <% } %>
+
+  // 성과 현황 차트 생성
+  const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+  let performanceChart = null;
+  
+  // 성과 현황 데이터 디버깅
+  console.log('성과 현황 데이터 디버깅 시작');
+  const performanceData = <%- JSON.stringify(gamePerformanceData || {}) %>;
+  console.log('성과 현황 데이터:', performanceData);
+  
+  // 기본 지표, 기간 설정
+  let currentMetric = '<%= defaultMetric || "revenue" %>';
+  let currentPeriod = 'custom'; // 커스텀 기간으로 변경
+  
+  // 날짜 범위 설정 (기본: 현재 날짜에서 30일 전)
+  const today = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  
+  // 날짜 포맷팅 함수 (YYYY-MM-DD)
+  function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  let startDate = formatDate(thirtyDaysAgo);
+  let endDate = formatDate(today);
+  
+  // 초기 날짜 설정
+  document.getElementById('startDate').value = startDate;
+  document.getElementById('endDate').value = endDate;
+  
+  console.log('현재 설정:', { currentMetric, startDate, endDate });
+  
+  // 차트 색상 설정
+  const chartColors = {
+    line: 'rgba(75, 192, 192, 1)',
+    anomaly: 'rgba(255, 99, 132, 1)',
+    movingAvg: 'rgba(54, 162, 235, 0.5)'
+  };
+  
+  // 성과 현황 차트 업데이트 함수
+  function updatePerformanceChart() {
+    try {
+      console.log('차트 업데이트 시작');
+      
+      // 데이터 확인 및 디버깅
+      console.log('성과 현황 데이터 확인:', performanceData);
+      
+      // 현재 선택된 지표, 기간에 대한 데이터 가져오기
+      if (!performanceData) {
+        console.error('성과 현황 데이터가 없습니다.');
+        document.getElementById('performanceChartContainer').innerHTML = `
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i> 성과 현황 데이터가 없습니다.
+          </div>
+        `;
+        return;
+      }
+      
+      // 데이터 구조 확인
+      if (!performanceData[currentMetric]) {
+        console.error(`${currentMetric} 지표 데이터가 없습니다.`);
+        document.getElementById('performanceChartContainer').innerHTML = `
+          <div class="alert alert-warning">
+            <i class="bi bi-info-circle me-2"></i> ${currentMetric} 지표 데이터가 없습니다.
+          </div>
+        `;
+        return;
+      }
+      
+      // 날짜 범위 가져오기
+      const start = new Date(document.getElementById('startDate').value);
+      const end = new Date(document.getElementById('endDate').value);
+      
+      // 일별 데이터를 기준으로 필터링 (daily 데이터가 가장 상세함)
+      const periodToUse = 'daily';
+      
+      // 글로벌 데이터 확인 및 필터링
+      let filteredGlobalData = [];
+      const hasGlobalData = performanceData[currentMetric].global && 
+                           performanceData[currentMetric].global[periodToUse] && 
+                           performanceData[currentMetric].global[periodToUse].length > 0;
+      
+      if (hasGlobalData) {
+        filteredGlobalData = performanceData[currentMetric].global[periodToUse].filter(item => {
+          const itemDate = new Date(item.date);
+          return itemDate >= start && itemDate <= end;
+        });
+      }
+                           
+      // 진출국가 데이터 확인 및 필터링
+      let filteredTargetData = [];
+      const hasTargetData = performanceData[currentMetric].target && 
+                           performanceData[currentMetric].target[periodToUse] && 
+                           performanceData[currentMetric].target[periodToUse].length > 0;
+      
+      if (hasTargetData) {
+        filteredTargetData = performanceData[currentMetric].target[periodToUse].filter(item => {
+          const itemDate = new Date(item.date);
+          return itemDate >= start && itemDate <= end;
+        });
+      }
+      
+      if (filteredGlobalData.length === 0 && filteredTargetData.length === 0) {
+        console.log('선택한 기간에 표시할 데이터가 없습니다.');
+        document.getElementById('performanceChartContainer').innerHTML = `
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i> 선택한 기간에 표시할 데이터가 없습니다.
+          </div>
+        `;
+        return;
+      }
+      
+      // 기존 차트가 있으면 파괴
+      if (performanceChart) {
+        performanceChart.destroy();
+      }
+      
+      // 지표별 단위 설정
+      let yAxisLabel = '';
+      switch(currentMetric) {
+        case 'revenue':
+          yAxisLabel = '매출 (원)';
+          break;
+        case 'downloads':
+          yAxisLabel = '다운로드 수';
+          break;
+        case 'dau':
+          yAxisLabel = 'DAU';
+          break;
+        case 'wishlist':
+          yAxisLabel = '위시리스트 수';
+          break;
+      }
+      
+      // 데이터셋 준비
+      const datasets = [];
+      
+      // 날짜 레이블 생성 (모든 날짜를 포함하도록)
+      const allDates = new Set();
+      
+      // 글로벌 데이터의 날짜 추가
+      filteredGlobalData.forEach(item => allDates.add(item.date));
+      
+      // 진출국가 데이터의 날짜 추가
+      filteredTargetData.forEach(item => allDates.add(item.date));
+      
+      // 날짜 정렬
+      const sortedDates = Array.from(allDates).sort();
+      
+      // 글로벌 데이터 추가
+      if (filteredGlobalData.length > 0) {
+        // 날짜별 값 매핑 및 전일 대비 증감률 계산
+        const dataMap = {};
+        const changeRateMap = {};
+        
+        // 값 매핑
+        filteredGlobalData.forEach(item => {
+          // 값이 0인 경우에도 데이터 포인트로 표시하기 위해 null이 아닌 0으로 설정
+          dataMap[item.date] = item.value !== null ? item.value : null;
+        });
+        
+        // 증감률 계산
+        sortedDates.forEach((date, index) => {
+          if (index > 0) {
+            const currentValue = dataMap[date];
+            const prevValue = dataMap[sortedDates[index - 1]];
+            
+            if (currentValue !== null && prevValue !== null && prevValue !== 0) {
+              const changeRate = ((currentValue - prevValue) / prevValue) * 100;
+              changeRateMap[date] = changeRate.toFixed(1);
+            } else {
+              changeRateMap[date] = null;
+            }
+          } else {
+            changeRateMap[date] = null; // 첫 번째 데이터는 증감률 없음
+          }
+        });
+        
+        // 모든 날짜에 대한 데이터 배열 생성 (없는 날짜는 null)
+        const values = sortedDates.map(date => dataMap[date] !== undefined ? dataMap[date] : null);
+        
+        datasets.push({
+          label: `글로벌 ${yAxisLabel}`,
+          data: values,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderWidth: 2,
+          fill: false,
+          spanGaps: false, // 0 값도 연결하기 위해 false로 설정
+          changeRates: changeRateMap // 증감률 데이터 추가
+        });
+      }
+      
+      // 진출국가 데이터 추가
+      if (filteredTargetData.length > 0) {
+        // 날짜별 값 매핑 및 전일 대비 증감률 계산
+        const dataMap = {};
+        const changeRateMap = {};
+        
+        // 값 매핑
+        filteredTargetData.forEach(item => {
+          // 값이 0인 경우에도 데이터 포인트로 표시하기 위해 null이 아닌 0으로 설정
+          dataMap[item.date] = item.value !== null ? item.value : null;
+        });
+        
+        // 증감률 계산
+        sortedDates.forEach((date, index) => {
+          if (index > 0) {
+            const currentValue = dataMap[date];
+            const prevValue = dataMap[sortedDates[index - 1]];
+            
+            if (currentValue !== null && prevValue !== null && prevValue !== 0) {
+              const changeRate = ((currentValue - prevValue) / prevValue) * 100;
+              changeRateMap[date] = changeRate.toFixed(1);
+            } else {
+              changeRateMap[date] = null;
+            }
+          } else {
+            changeRateMap[date] = null; // 첫 번째 데이터는 증감률 없음
+          }
+        });
+        
+        // 모든 날짜에 대한 데이터 배열 생성 (없는 날짜는 null)
+        const values = sortedDates.map(date => dataMap[date] !== undefined ? dataMap[date] : null);
+        
+        datasets.push({
+          label: `진출국가 ${yAxisLabel}`,
+          data: values,
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderWidth: 2,
+          fill: false,
+          spanGaps: false, // 0 값도 연결하기 위해 false로 설정
+          changeRates: changeRateMap // 증감률 데이터 추가
+        });
+      }
+      
+      // 차트 생성
+      performanceChart = new Chart(performanceCtx, {
+        type: 'line',
+        data: {
+          labels: sortedDates,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            tooltip: {
+              enabled: true,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleFont: {
+                size: 14,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 13
+              },
+              padding: 10,
+              callbacks: {
+                title: function(tooltipItems) {
+                  if (!tooltipItems.length) return '';
+                  const date = tooltipItems[0].label;
+                  if (!date) return '';
+                  
+                  const parts = date.split('-');
+                  if (parts.length !== 3) return date;
+                  
+                  return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
+                },
+                label: function(tooltipItem) {
+                  let label = tooltipItem.dataset.label || '';
+                  let value = tooltipItem.raw || 0;
+                  
+                  // 지표에 따른 단위 추가
+                  let formattedValue = value !== null ? value.toLocaleString() : '데이터 없음';
+                  
+                  // 지표별 단위 설정
+                  if (currentMetric === 'revenue') {
+                    formattedValue += ' 원';
+                  } else if (currentMetric === 'downloads') {
+                    formattedValue += ' 회';
+                  } else if (currentMetric === 'dau') {
+                    formattedValue += ' 명';
+                  } else if (currentMetric === 'wishlist') {
+                    formattedValue += ' 개';
+                  }
+                  
+                  return `${label}: ${formattedValue}`;
+                },
+                afterLabel: function(tooltipItem) {
+                  // 전일 대비 증감률 추가
+                  const date = tooltipItem.label;
+                  const changeRate = tooltipItem.dataset.changeRates ? tooltipItem.dataset.changeRates[date] : null;
+                  if (changeRate !== null && changeRate !== undefined) {
+                    const isPositive = parseFloat(changeRate) >= 0;
+                    const sign = isPositive ? '+' : '';
+                    return `전일 대비: ${sign}${changeRate}%`;
+                  }
+                  return '';
+                },
+                footer: function(tooltipItems) {
+                  // 글로벌과 진출국가 데이터가 모두 있는 경우 비율 표시
+                  if (tooltipItems.length === 2) {
+                    const globalItem = tooltipItems.find(item => item.dataset.label.includes('글로벌'));
+                    const targetItem = tooltipItems.find(item => item.dataset.label.includes('진출국가'));
+                    
+                    if (globalItem && targetItem && globalItem.raw > 0) {
+                      const ratio = ((targetItem.raw / globalItem.raw) * 100).toFixed(1);
+                      return `진출국가/글로벌 비율: ${ratio}%`;
+                    }
+                  }
+                  return '';
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // 누적 데이터 계산 및 표시
+      let globalAccumulated = 0;
+      let targetAccumulated = 0;
+      
+      // 글로벌 데이터 누적 계산
+      if (filteredGlobalData.length > 0) {
+        globalAccumulated = filteredGlobalData.reduce((sum, item) => {
+          return sum + (item.value !== null ? Number(item.value) : 0);
+        }, 0);
+        
+        // 기간 내 증감률 계산 (선택 기간의 첫날과 마지막날 비교)
+        if (filteredGlobalData.length >= 2) {
+          const firstDayValue = filteredGlobalData[0].value || 0;
+          const lastDayValue = filteredGlobalData[filteredGlobalData.length - 1].value || 0;
+          
+          if (firstDayValue > 0) {
+            const changeRate = ((lastDayValue - firstDayValue) / firstDayValue) * 100;
+            const isPositive = changeRate >= 0;
+            const color = isPositive ? '#28a745' : '#dc3545';
+            const sign = isPositive ? '+' : '';
+            const badgeClass = isPositive ? 'bg-success' : 'bg-danger';
+            document.getElementById('globalChangeRate').className = `badge rounded-pill ${badgeClass}`;
+            document.getElementById('globalChangeRate').textContent = `${sign}${changeRate.toFixed(2)}%`;
+          }
+        }
+      }
+      
+      // 진출국가 데이터 누적 계산
+      if (filteredTargetData.length > 0) {
+        targetAccumulated = filteredTargetData.reduce((sum, item) => {
+          return sum + (item.value !== null ? Number(item.value) : 0);
+        }, 0);
+        
+        // 기간 내 증감률 계산 (선택 기간의 첫날과 마지막날 비교)
+        if (filteredTargetData.length >= 2) {
+          const firstDayValue = filteredTargetData[0].value || 0;
+          const lastDayValue = filteredTargetData[filteredTargetData.length - 1].value || 0;
+          
+          if (firstDayValue > 0) {
+            const changeRate = ((lastDayValue - firstDayValue) / firstDayValue) * 100;
+            const isPositive = changeRate >= 0;
+            const color = isPositive ? '#28a745' : '#dc3545';
+            const sign = isPositive ? '+' : '';
+            const badgeClass = isPositive ? 'bg-success' : 'bg-danger';
+            document.getElementById('targetChangeRate').className = `badge rounded-pill ${badgeClass}`;
+            document.getElementById('targetChangeRate').textContent = `${sign}${changeRate.toFixed(2)}%`;
+          }
+        }
+      }
+      
+      // 누적 데이터 표시
+      document.getElementById('globalAccumulatedValue').textContent = globalAccumulated.toLocaleString();
+      document.getElementById('targetAccumulatedValue').textContent = targetAccumulated.toLocaleString();
+      
+      // 지표에 따라 단위 추가
+      let unit = '';
+      if (currentMetric === 'revenue') {
+        unit = ' 원';
+        document.getElementById('globalAccumulatedValue').textContent += unit;
+        document.getElementById('targetAccumulatedValue').textContent += unit;
+      }
+      
+      console.log('차트 생성 완료');
+      console.log('누적 데이터:', { 글로벌: globalAccumulated, 진출국가: targetAccumulated });
+      
+    } catch (error) {
+      console.error('차트 업데이트 중 오류 발생:', error);
+      document.getElementById('performanceChartContainer').innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i> 차트 생성 중 오류가 발생했습니다: ${error.message}
+        </div>
+      `;
+    }
+  }
+  
+  // 필터 변경 이벤트 리스너
+  document.querySelectorAll('input[name="metricRadio"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      currentMetric = this.value;
+      console.log('지표 변경:', currentMetric);
+      updatePerformanceChart();
+    });
+  });
+  
+  // 날짜 필터 적용 버튼
+  document.getElementById('applyDateFilter').addEventListener('click', function() {
+    console.log('날짜 필터 적용:', document.getElementById('startDate').value, document.getElementById('endDate').value);
+    updatePerformanceChart();
+  });
+  
+  // 초기 차트 렌더링
+  console.log('초기 차트 렌더링 시작');
+  updatePerformanceChart();
 });
 
 // 포인트 사용 토글 함수
