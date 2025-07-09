@@ -1,0 +1,165 @@
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>담당자 접속 로그</h2>
+        <a href="/managers" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i> 담당자 관리로 돌아가기
+        </a>
+      </div>
+      
+      <!-- 필터링 옵션 -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">로그 필터링</h5>
+        </div>
+        <div class="card-body">
+          <form action="/managers/access-logs" method="GET" class="row g-3">
+            <!-- 담당자 선택 -->
+            <div class="col-md-3">
+              <label for="manager_id" class="form-label">담당자</label>
+              <select class="form-select" id="manager_id" name="manager_id">
+                <option value="">전체 담당자</option>
+                <% managers.forEach(manager => { %>
+                  <option value="<%= manager.id %>" <%= filters.manager_id == manager.id ? 'selected' : '' %>>
+                    <%= manager.name %> (<%= manager.email %>)
+                  </option>
+                <% }); %>
+              </select>
+            </div>
+            
+            <!-- 액션 선택 -->
+            <div class="col-md-2">
+              <label for="action" class="form-label">액션</label>
+              <select class="form-select" id="action" name="action">
+                <option value="">전체 액션</option>
+                <option value="login" <%= filters.action === 'login' ? 'selected' : '' %>>로그인</option>
+                <option value="logout" <%= filters.action === 'logout' ? 'selected' : '' %>>로그아웃</option>
+                <option value="login_failed" <%= filters.action === 'login_failed' ? 'selected' : '' %>>로그인 실패</option>
+              </select>
+            </div>
+            
+            <!-- 기간 선택 -->
+            <div class="col-md-3">
+              <label for="start_date" class="form-label">시작일</label>
+              <input type="date" class="form-control" id="start_date" name="start_date" value="<%= filters.start_date || '' %>">
+            </div>
+            
+            <div class="col-md-3">
+              <label for="end_date" class="form-label">종료일</label>
+              <input type="date" class="form-control" id="end_date" name="end_date" value="<%= filters.end_date || '' %>">
+            </div>
+            
+            <div class="col-md-1 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary w-100">적용</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      <!-- 접속 로그 테이블 -->
+      <div class="card">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">접속 로그 목록</h5>
+          <span class="badge bg-secondary"><%= logs.length %>개 항목</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>담당자</th>
+                  <th>액션</th>
+                  <th>상태</th>
+                  <th>IP 주소</th>
+                  <th>로그인 시간</th>
+                  <th>로그아웃 시간</th>
+                  <th>세션 정보</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (logs.length === 0) { %>
+                  <tr>
+                    <td colspan="8" class="text-center py-4">
+                      <i class="bi bi-info-circle me-2"></i> 조회된 접속 로그가 없습니다.
+                    </td>
+                  </tr>
+                <% } else { %>
+                  <% logs.forEach(log => { %>
+                    <tr>
+                      <td><%= log.id %></td>
+                      <td>
+                        <% if (log.manager_name) { %>
+                          <strong><%= log.manager_name %></strong><br>
+                          <small class="text-muted"><%= log.manager_email %></small>
+                        <% } else { %>
+                          <small class="text-muted"><%= log.manager_email || 'unknown' %></small>
+                        <% } %>
+                      </td>
+                      <td>
+                        <% if (log.action === 'login') { %>
+                          <span class="badge bg-success">로그인</span>
+                        <% } else if (log.action === 'logout') { %>
+                          <span class="badge bg-secondary">로그아웃</span>
+                        <% } else if (log.action === 'login_failed') { %>
+                          <span class="badge bg-danger">로그인 실패</span>
+                        <% } else { %>
+                          <span class="badge bg-info"><%= log.action %></span>
+                        <% } %>
+                      </td>
+                      <td>
+                        <% if (log.login_status === 'success') { %>
+                          <span class="badge bg-success">성공</span>
+                        <% } else if (log.login_status === 'failed') { %>
+                          <span class="badge bg-danger">실패</span>
+                        <% } else { %>
+                          <span class="badge bg-secondary"><%= log.login_status || '-' %></span>
+                        <% } %>
+                      </td>
+                      <td><%= log.ip_address || '-' %></td>
+                      <td>
+                        <% if (log.login_time) { %>
+                          <%= new Date(log.login_time).toLocaleString('ko-KR') %>
+                        <% } else { %>
+                          -
+                        <% } %>
+                      </td>
+                      <td>
+                        <% if (log.logout_time) { %>
+                          <%= new Date(log.logout_time).toLocaleString('ko-KR') %>
+                        <% } else { %>
+                          <span class="text-muted">-</span>
+                        <% } %>
+                      </td>
+                      <td>
+                        <small class="text-muted"><%= log.session_id || '-' %></small>
+                      </td>
+                    </tr>
+                  <% }); %>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // 오늘 날짜를 기본값으로 설정 (종료일)
+  if (!document.getElementById('end_date').value) {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('end_date').value = today;
+  }
+  
+  // 30일 전 날짜를 기본값으로 설정 (시작일)
+  if (!document.getElementById('start_date').value) {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    document.getElementById('start_date').value = thirtyDaysAgo.toISOString().split('T')[0];
+  }
+});
+</script> 

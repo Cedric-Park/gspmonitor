@@ -130,6 +130,7 @@
                   <th>이메일</th>
                   <th>권한</th>
                   <th>담당 게임사</th>
+                  <th>접속기록</th>
                   <% if (user && user.role === '어드민') { %>
                   <th>권한 관리</th>
                   <% } %>
@@ -150,13 +151,26 @@
                       <% } %>
                     </td>
                     <td>
-                      <button 
-                        class="btn btn-sm btn-outline-primary view-companies" 
-                        data-manager-id="<%= manager.id %>"
-                        data-manager-name="<%= manager.name %>"
-                      >
-                        담당 게임사 보기
-                      </button>
+                      <% 
+                        // 해당 담당자의 게임사 목록 찾기
+                        const managerCompanies = mappings.filter(m => m.manager_id === manager.id).map(m => m.company_name);
+                        if (managerCompanies.length > 0) { 
+                      %>
+                        <%= managerCompanies.join(', ') %>
+                      <% } else { %>
+                        <span class="text-muted">없음</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-info access-log-btn" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#accessLogModal"
+                                data-manager-id="<%= manager.id %>"
+                                data-manager-name="<%= manager.name %>">
+                          <i class="bi bi-clock-history"></i> 접속기록
+                        </button>
+                      </div>
                     </td>
                     <% if (user && user.role === '어드민') { %>
                     <td>
@@ -307,6 +321,53 @@
   </div>
 </div>
 
+<!-- 접속 기록 모달 -->
+<div class="modal fade" id="accessLogModal" tabindex="-1" aria-labelledby="accessLogModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="accessLogModalLabel">담당자 접속 기록</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center" id="accessLogLoading">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">로딩 중...</span>
+          </div>
+          <p class="mt-2">접속 기록을 불러오는 중입니다...</p>
+        </div>
+        
+        <div id="accessLogContent" style="display: none;">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>접속 시간</th>
+                  <th>로그아웃 시간</th>
+                  <th>IP 주소</th>
+                  <th>브라우저</th>
+                </tr>
+              </thead>
+              <tbody id="accessLogTableBody">
+                <!-- 여기에 접속 기록이 동적으로 추가됩니다 -->
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="text-center mt-3" id="accessLogEmpty" style="display: none;">
+            <p class="text-muted">
+              <i class="bi bi-info-circle me-2"></i> 접속 기록이 없습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     // 담당 게임사 버튼 클릭 이벤트
@@ -385,6 +446,80 @@
         }
         
         roleModal.show();
+      });
+    });
+
+    // 접속 기록 모달 설정
+    document.querySelectorAll('.access-log-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        const managerId = this.dataset.managerId;
+        const managerName = this.dataset.managerName;
+        
+        document.getElementById('accessLogModalLabel').textContent = `${managerName} 담당자 접속 기록`;
+        
+        // 로딩 상태 표시
+        document.getElementById('accessLogLoading').style.display = 'block';
+        document.getElementById('accessLogContent').style.display = 'none';
+        document.getElementById('accessLogEmpty').style.display = 'none';
+        document.getElementById('accessLogTableBody').innerHTML = '';
+        
+        // 접속 기록 가져오기
+        fetch(`/managers/api/${managerId}/access-logs`)
+          .then(response => response.json())
+          .then(data => {
+            // 로딩 상태 숨기기
+            document.getElementById('accessLogLoading').style.display = 'none';
+            document.getElementById('accessLogContent').style.display = 'block';
+            
+            if (data.success && data.logs && data.logs.length > 0) {
+              // 접속 기록 표시
+              const tbody = document.getElementById('accessLogTableBody');
+              
+              data.logs.forEach(log => {
+                const row = document.createElement('tr');
+                
+                // 접속 시간
+                const loginTimeCell = document.createElement('td');
+                loginTimeCell.textContent = new Date(log.login_time).toLocaleString('ko-KR');
+                row.appendChild(loginTimeCell);
+                
+                // 로그아웃 시간
+                const logoutTimeCell = document.createElement('td');
+                if (log.logout_time) {
+                  logoutTimeCell.textContent = new Date(log.logout_time).toLocaleString('ko-KR');
+                } else {
+                  logoutTimeCell.innerHTML = '<span class="text-muted">기록 없음</span>';
+                }
+                row.appendChild(logoutTimeCell);
+                
+                // IP 주소
+                const ipCell = document.createElement('td');
+                ipCell.textContent = log.ip_address || '-';
+                row.appendChild(ipCell);
+                
+                // 브라우저 정보
+                const browserCell = document.createElement('td');
+                browserCell.innerHTML = `<small class="text-muted">${log.user_agent || '-'}</small>`;
+                row.appendChild(browserCell);
+                
+                tbody.appendChild(row);
+              });
+            } else {
+              // 접속 기록이 없는 경우
+              document.getElementById('accessLogEmpty').style.display = 'block';
+            }
+          })
+          .catch(error => {
+            console.error('접속 기록 조회 오류:', error);
+            document.getElementById('accessLogLoading').style.display = 'none';
+            document.getElementById('accessLogContent').style.display = 'block';
+            document.getElementById('accessLogEmpty').style.display = 'block';
+            document.getElementById('accessLogEmpty').innerHTML = `
+              <p class="text-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i> 접속 기록을 불러오는 중 오류가 발생했습니다.
+              </p>
+            `;
+          });
       });
     });
   });

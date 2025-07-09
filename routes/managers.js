@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const managerModel = require('../models/manager');
 const gameModel = require('../models/game');
+const accessLogModel = require('../models/accessLog');
 
 // 담당자 목록 페이지
 router.get('/', async (req, res) => {
@@ -11,15 +12,15 @@ router.get('/', async (req, res) => {
     const mappings = await managerModel.getAllCompanyManagerMappings();
     
     // 모든 게임사 목록 가져오기
-    const games = await gameModel.getAllGames();
-    const companies = [...new Set(games.map(game => game.company_name))].sort();
+    const companies = await gameModel.getAllCompanies();
     
     res.render('managers/index', {
       title: '게임사 담당자 관리',
       managers,
       mappings,
       companies,
-      query: req.query
+      query: req.query,
+      userRole: req.session.user ? req.session.user.role : null
     });
   } catch (error) {
     console.error('담당자 목록 조회 오류:', error);
@@ -129,6 +130,40 @@ router.get('/api/:id', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: '담당자 정보를 조회하는 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
+// 담당자 접속 기록 조회 API
+router.get('/api/:id/access-logs', async (req, res) => {
+  try {
+    const managerId = req.params.id;
+    
+    // 현재 사용자가 어드민인지 확인
+    const isAdmin = req.session.user && req.session.user.role === '어드민';
+    const isSelf = req.session.user && req.session.user.id === managerId;
+    
+    // 어드민이 아니고 본인의 기록도 아니면 접근 거부
+    if (!isAdmin && !isSelf) {
+      return res.status(403).json({
+        success: false,
+        message: '접근 권한이 없습니다.'
+      });
+    }
+    
+    // 접속 기록 조회
+    const logs = await accessLogModel.getManagerAccessLogs(managerId, { limit: 20 });
+    
+    res.json({
+      success: true,
+      logs
+    });
+  } catch (error) {
+    console.error('담당자 접속 기록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '접속 기록을 조회하는 중 오류가 발생했습니다.',
+      error: error.message
     });
   }
 });

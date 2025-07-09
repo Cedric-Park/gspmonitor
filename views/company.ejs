@@ -498,6 +498,17 @@
         <h5 class="mb-0"><%= companyName %> 글로벌 성과 현황</h5>
       </div>
       <div class="card-body">
+        <!-- 데이터 설명 추가 -->
+        <div class="alert alert-light border mb-4">
+          <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>데이터 설명</h6>
+          <ul class="mb-0 small">
+            <li><strong>글로벌</strong>: 한국을 제외한 전세계 모든 국가의 합계 데이터</li>
+            <li><strong>진출국가</strong>: 게임사가 지정한 6개 국가의 합계 데이터 (글로벌 데이터의 일부)</li>
+            <li><strong>지표별 특성</strong>: 매출/다운로드/위시리스트는 기간 내 합계, DAU는 기간 내 평균값으로 표시</li>
+            <li><strong>데이터 출처</strong>: 게임사가 공유한 스프레드시트 데이터 기반</li>
+          </ul>
+        </div>
+        
         <!-- 필터링 컨트롤 -->
         <div class="row mb-4">
           <div class="col-md-4 mb-3">
@@ -533,21 +544,91 @@
         
         <!-- 누적 데이터 표시 섹션 추가 -->
         <div class="row mt-4" id="accumulatedDataContainer">
-          <div class="col-md-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body p-4 d-flex flex-column">
-                <h5 class="card-title text-muted mb-3">글로벌</h5>
-                <h2 class="card-text fw-bold mb-0" id="globalAccumulatedValue">0</h2>
-                <p class="card-text mt-2 mt-auto"><span id="globalChangeRate" class="badge rounded-pill"></span></p>
+          <!-- 데이터 표시 방식 선택 탭 -->
+          <div class="col-12 mb-3">
+            <ul class="nav nav-pills" id="dataViewTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="sum-tab" data-bs-toggle="pill" data-bs-target="#sum-data" type="button" role="tab" aria-controls="sum-data" aria-selected="true">기간 내 합계</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="avg-tab" data-bs-toggle="pill" data-bs-target="#avg-data" type="button" role="tab" aria-controls="avg-data" aria-selected="false">기간 내 평균</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="total-tab" data-bs-toggle="pill" data-bs-target="#total-data" type="button" role="tab" aria-controls="total-data" aria-selected="false">전체 데이터 합계</button>
+              </li>
+            </ul>
+          </div>
+          
+          <div class="tab-content" id="dataViewTabContent">
+            <!-- 기간 내 합계 탭 -->
+            <div class="tab-pane fade show active" id="sum-data" role="tabpanel" aria-labelledby="sum-tab">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4 d-flex flex-column">
+                      <h5 class="card-title text-muted mb-3">글로벌 <small class="text-info">(기간 내 합계)</small></h5>
+                      <h2 class="card-text fw-bold mb-0" id="globalAccumulatedValue">0</h2>
+                      <p class="card-text mt-2 mt-auto"><span id="globalChangeRate" class="badge rounded-pill"></span></p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4 d-flex flex-column">
+                      <h5 class="card-title text-muted mb-3">진출국가 <small class="text-info">(기간 내 합계)</small></h5>
+                      <h2 class="card-text fw-bold mb-0" id="targetAccumulatedValue">0</h2>
+                      <p class="card-text mt-2 mt-auto"><span id="targetChangeRate" class="badge rounded-pill"></span></p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="col-md-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body p-4 d-flex flex-column">
-                <h5 class="card-title text-muted mb-3">진출국가</h5>
-                <h2 class="card-text fw-bold mb-0" id="targetAccumulatedValue">0</h2>
-                <p class="card-text mt-2 mt-auto"><span id="targetChangeRate" class="badge rounded-pill"></span></p>
+            
+            <!-- 기간 내 평균 탭 -->
+            <div class="tab-pane fade" id="avg-data" role="tabpanel" aria-labelledby="avg-tab">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4 d-flex flex-column">
+                      <h5 class="card-title text-muted mb-3">글로벌 <small class="text-info">(기간 내 평균)</small></h5>
+                      <h2 class="card-text fw-bold mb-0" id="globalAverageValue">0</h2>
+                      <p class="card-text mt-2 mt-auto"><small class="text-muted">일 평균 값</small></p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4 d-flex flex-column">
+                      <h5 class="card-title text-muted mb-3">진출국가 <small class="text-info">(기간 내 평균)</small></h5>
+                      <h2 class="card-text fw-bold mb-0" id="targetAverageValue">0</h2>
+                      <p class="card-text mt-2 mt-auto"><small class="text-muted">일 평균 값</small></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 전체 데이터 합계 탭 -->
+            <div class="tab-pane fade" id="total-data" role="tabpanel" aria-labelledby="total-tab">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4 d-flex flex-column">
+                      <h5 class="card-title text-muted mb-3">글로벌 <small class="text-info">(전체 합계)</small></h5>
+                      <h2 class="card-text fw-bold mb-0" id="globalTotalValue">0</h2>
+                      <p class="card-text mt-2 mt-auto"><small class="text-muted">전체 기간 데이터 합산</small></p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4 d-flex flex-column">
+                      <h5 class="card-title text-muted mb-3">진출국가 <small class="text-info">(전체 합계)</small></h5>
+                      <h2 class="card-text fw-bold mb-0" id="targetTotalValue">0</h2>
+                      <p class="card-text mt-2 mt-auto"><small class="text-muted">전체 기간 데이터 합산</small></p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -825,11 +906,16 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // 글로벌 데이터 확인 및 필터링
       let filteredGlobalData = [];
+      let allGlobalData = [];
       const hasGlobalData = performanceData[currentMetric].global && 
                            performanceData[currentMetric].global[periodToUse] && 
                            performanceData[currentMetric].global[periodToUse].length > 0;
       
       if (hasGlobalData) {
+        // 전체 데이터 저장
+        allGlobalData = [...performanceData[currentMetric].global[periodToUse]];
+        
+        // 선택된 기간 필터링
         filteredGlobalData = performanceData[currentMetric].global[periodToUse].filter(item => {
           const itemDate = new Date(item.date);
           return itemDate >= start && itemDate <= end;
@@ -838,11 +924,16 @@ document.addEventListener('DOMContentLoaded', function() {
                            
       // 진출국가 데이터 확인 및 필터링
       let filteredTargetData = [];
+      let allTargetData = [];
       const hasTargetData = performanceData[currentMetric].target && 
                            performanceData[currentMetric].target[periodToUse] && 
                            performanceData[currentMetric].target[periodToUse].length > 0;
       
       if (hasTargetData) {
+        // 전체 데이터 저장
+        allTargetData = [...performanceData[currentMetric].target[periodToUse]];
+        
+        // 선택된 기간 필터링
         filteredTargetData = performanceData[currentMetric].target[periodToUse].filter(item => {
           const itemDate = new Date(item.date);
           return itemDate >= start && itemDate <= end;
@@ -1074,12 +1165,33 @@ document.addEventListener('DOMContentLoaded', function() {
       // 누적 데이터 계산 및 표시
       let globalAccumulated = 0;
       let targetAccumulated = 0;
+      let globalAverage = 0;
+      let targetAverage = 0;
+      let globalTotal = 0;
+      let targetTotal = 0;
       
-      // 글로벌 데이터 누적 계산
+      // 지표 유형에 따른 집계 방식 결정
+      const isAverageMetric = currentMetric === 'dau'; // DAU는 평균 계산이 더 적합
+      
+      // 글로벌 데이터 계산
       if (filteredGlobalData.length > 0) {
-        globalAccumulated = filteredGlobalData.reduce((sum, item) => {
+        // 기간 내 합계 (DAU는 평균, 나머지는 합계)
+        if (isAverageMetric) {
+          // DAU는 평균값 계산
+          globalAccumulated = filteredGlobalData.reduce((sum, item) => {
+            return sum + (item.value !== null ? Number(item.value) : 0);
+          }, 0) / filteredGlobalData.length;
+        } else {
+          // 매출, 다운로드, 위시리스트는 합계 계산
+          globalAccumulated = filteredGlobalData.reduce((sum, item) => {
+            return sum + (item.value !== null ? Number(item.value) : 0);
+          }, 0);
+        }
+        
+        // 기간 내 일평균 계산
+        globalAverage = filteredGlobalData.reduce((sum, item) => {
           return sum + (item.value !== null ? Number(item.value) : 0);
-        }, 0);
+        }, 0) / filteredGlobalData.length;
         
         // 기간 내 증감률 계산 (선택 기간의 첫날과 마지막날 비교)
         if (filteredGlobalData.length >= 2) {
@@ -1089,7 +1201,6 @@ document.addEventListener('DOMContentLoaded', function() {
           if (firstDayValue > 0) {
             const changeRate = ((lastDayValue - firstDayValue) / firstDayValue) * 100;
             const isPositive = changeRate >= 0;
-            const color = isPositive ? '#28a745' : '#dc3545';
             const sign = isPositive ? '+' : '';
             const badgeClass = isPositive ? 'bg-success' : 'bg-danger';
             document.getElementById('globalChangeRate').className = `badge rounded-pill ${badgeClass}`;
@@ -1098,11 +1209,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
       
-      // 진출국가 데이터 누적 계산
+      // 진출국가 데이터 계산
       if (filteredTargetData.length > 0) {
-        targetAccumulated = filteredTargetData.reduce((sum, item) => {
+        // 기간 내 합계 (DAU는 평균, 나머지는 합계)
+        if (isAverageMetric) {
+          // DAU는 평균값 계산
+          targetAccumulated = filteredTargetData.reduce((sum, item) => {
+            return sum + (item.value !== null ? Number(item.value) : 0);
+          }, 0) / filteredTargetData.length;
+        } else {
+          // 매출, 다운로드, 위시리스트는 합계 계산
+          targetAccumulated = filteredTargetData.reduce((sum, item) => {
+            return sum + (item.value !== null ? Number(item.value) : 0);
+          }, 0);
+        }
+        
+        // 기간 내 일평균 계산
+        targetAverage = filteredTargetData.reduce((sum, item) => {
           return sum + (item.value !== null ? Number(item.value) : 0);
-        }, 0);
+        }, 0) / filteredTargetData.length;
         
         // 기간 내 증감률 계산 (선택 기간의 첫날과 마지막날 비교)
         if (filteredTargetData.length >= 2) {
@@ -1112,7 +1237,6 @@ document.addEventListener('DOMContentLoaded', function() {
           if (firstDayValue > 0) {
             const changeRate = ((lastDayValue - firstDayValue) / firstDayValue) * 100;
             const isPositive = changeRate >= 0;
-            const color = isPositive ? '#28a745' : '#dc3545';
             const sign = isPositive ? '+' : '';
             const badgeClass = isPositive ? 'bg-success' : 'bg-danger';
             document.getElementById('targetChangeRate').className = `badge rounded-pill ${badgeClass}`;
@@ -1121,20 +1245,65 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
       
-      // 누적 데이터 표시
-      document.getElementById('globalAccumulatedValue').textContent = globalAccumulated.toLocaleString();
-      document.getElementById('targetAccumulatedValue').textContent = targetAccumulated.toLocaleString();
+      // 전체 데이터 합계 계산
+      if (allGlobalData.length > 0) {
+        if (isAverageMetric) {
+          // DAU는 전체 기간의 평균
+          globalTotal = allGlobalData.reduce((sum, item) => {
+            return sum + (item.value !== null ? Number(item.value) : 0);
+          }, 0) / allGlobalData.length;
+        } else {
+          // 매출, 다운로드, 위시리스트는 전체 합계
+          globalTotal = allGlobalData.reduce((sum, item) => {
+            return sum + (item.value !== null ? Number(item.value) : 0);
+          }, 0);
+        }
+      }
+      
+      if (allTargetData.length > 0) {
+        if (isAverageMetric) {
+          // DAU는 전체 기간의 평균
+          targetTotal = allTargetData.reduce((sum, item) => {
+            return sum + (item.value !== null ? Number(item.value) : 0);
+          }, 0) / allTargetData.length;
+        } else {
+          // 매출, 다운로드, 위시리스트는 전체 합계
+          targetTotal = allTargetData.reduce((sum, item) => {
+            return sum + (item.value !== null ? Number(item.value) : 0);
+          }, 0);
+        }
+      }
       
       // 지표에 따라 단위 추가
       let unit = '';
       if (currentMetric === 'revenue') {
         unit = ' 원';
-        document.getElementById('globalAccumulatedValue').textContent += unit;
-        document.getElementById('targetAccumulatedValue').textContent += unit;
+      } else if (currentMetric === 'downloads') {
+        unit = ' 회';
+      } else if (currentMetric === 'dau') {
+        unit = ' 명';
+      } else if (currentMetric === 'wishlist') {
+        unit = ' 개';
       }
       
+      // 기간 내 합계 표시
+      document.getElementById('globalAccumulatedValue').textContent = Math.round(globalAccumulated).toLocaleString() + unit;
+      document.getElementById('targetAccumulatedValue').textContent = Math.round(targetAccumulated).toLocaleString() + unit;
+      
+      // 기간 내 평균 표시
+      document.getElementById('globalAverageValue').textContent = Math.round(globalAverage).toLocaleString() + unit;
+      document.getElementById('targetAverageValue').textContent = Math.round(targetAverage).toLocaleString() + unit;
+      
+      // 전체 데이터 합계 표시
+      document.getElementById('globalTotalValue').textContent = Math.round(globalTotal).toLocaleString() + unit;
+      document.getElementById('targetTotalValue').textContent = Math.round(targetTotal).toLocaleString() + unit;
+      
       console.log('차트 생성 완료');
-      console.log('누적 데이터:', { 글로벌: globalAccumulated, 진출국가: targetAccumulated });
+      console.log('데이터 계산 결과:', { 
+        기간내합계: { 글로벌: globalAccumulated, 진출국가: targetAccumulated },
+        기간내평균: { 글로벌: globalAverage, 진출국가: targetAverage },
+        전체합계: { 글로벌: globalTotal, 진출국가: targetTotal }
+      });
       
     } catch (error) {
       console.error('차트 업데이트 중 오류 발생:', error);

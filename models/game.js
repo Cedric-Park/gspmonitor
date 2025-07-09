@@ -679,6 +679,21 @@ async function updatePointUsageDB() {
   }
 }
 
+// 모든 게임사 목록 가져오기
+function getAllCompanies() {
+  return new Promise((resolve, reject) => {
+    const query = `SELECT DISTINCT company_name FROM games ORDER BY company_name`;
+    
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows.map(row => row.company_name));
+    });
+  });
+}
+
 module.exports = {
   getAllGames,
   getAllGamesWithPointUsage,
@@ -693,5 +708,8 @@ module.exports = {
   syncWithGoogleSheet,
   getLastSyncTime,
   getNextSyncInfo,
-  updatePointUsageDB
+  updatePointUsageDB,
+  getAllCompanies,
+  // 별칭 추가
+  getCompanies: getAllCompanies // getAllCompanies 함수의 별칭
 }; 
