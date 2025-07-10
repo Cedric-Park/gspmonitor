@@ -1,19 +1,32 @@
 const db = require('../db/database');
 
 /**
+ * 현재 한국 시간을 ISO 문자열로 반환
+ * @returns {string} 한국 시간 ISO 문자열
+ */
+function getCurrentKoreanTime() {
+  const now = new Date();
+  // 한국 시간으로 변환 (UTC+9)
+  const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  return koreaTime.toISOString();
+}
+
+/**
  * 접속 로그 기록 (로그인)
  * @param {Object} logData 로그 데이터
  * @returns {Promise<Object>} 생성된 로그 정보
  */
 function createLoginLog(logData) {
   return new Promise((resolve, reject) => {
+    const koreanTime = getCurrentKoreanTime();
+    
     const query = `
       INSERT INTO access_logs (
         manager_id, manager_name, manager_email, manager_role,
         action, ip_address, user_agent, login_status,
         login_time, session_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     db.run(
@@ -27,6 +40,7 @@ function createLoginLog(logData) {
         logData.ip_address,
         logData.user_agent,
         logData.login_status,
+        koreanTime,
         logData.session_id
       ],
       function(err) {
@@ -40,7 +54,7 @@ function createLoginLog(logData) {
           id: this.lastID,
           ...logData,
           action: 'login',
-          login_time: new Date().toISOString()
+          login_time: koreanTime
         });
       }
     );
@@ -54,14 +68,16 @@ function createLoginLog(logData) {
  */
 function updateLogoutTime(sessionId) {
   return new Promise((resolve, reject) => {
+    const koreanTime = getCurrentKoreanTime();
+    
     const query = `
       UPDATE access_logs
-      SET logout_time = CURRENT_TIMESTAMP,
+      SET logout_time = ?,
           action = 'logout'
       WHERE session_id = ? AND logout_time IS NULL
     `;
     
-    db.run(query, [sessionId], function(err) {
+    db.run(query, [koreanTime, sessionId], function(err) {
       if (err) {
         console.error('로그아웃 시간 업데이트 오류:', err);
         reject(err);
@@ -78,7 +94,7 @@ function updateLogoutTime(sessionId) {
         updated: true, 
         message: '로그아웃 시간이 기록되었습니다.',
         session_id: sessionId,
-        logout_time: new Date().toISOString()
+        logout_time: koreanTime
       });
     });
   });
@@ -124,4 +140,4 @@ module.exports = {
   createLoginLog,
   updateLogoutTime,
   getManagerAccessLogs
-}; 
+};
