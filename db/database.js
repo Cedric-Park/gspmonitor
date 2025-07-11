@@ -157,7 +157,7 @@ function createManagersTable() {
 
 // 기타 테이블 생성 함수
 function createOtherTables(callback) {
-  let pendingTables = 5; // 생성할 테이블 수 (4에서 5로 변경)
+  let pendingTables = 6; // 생성할 테이블 수 (5에서 6으로 변경)
   
   function tableCreated() {
     pendingTables--;
@@ -245,6 +245,33 @@ function createOtherTables(callback) {
       console.error('알림 이력 테이블 생성 오류:', err.message);
     } else {
       console.log('알림 이력 테이블이 준비되었습니다.');
+    }
+    tableCreated();
+  });
+  
+  // 접속 로그 테이블 생성
+  db.run(`
+    CREATE TABLE IF NOT EXISTS access_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      manager_id INTEGER,
+      manager_name TEXT,
+      manager_email TEXT,
+      manager_role TEXT,
+      action TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      login_status TEXT,
+      login_time TEXT,
+      logout_time TEXT,
+      session_id TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (manager_id) REFERENCES managers (id)
+    )
+  `, (err) => {
+    if (err) {
+      console.error('접속 로그 테이블 생성 오류:', err.message);
+    } else {
+      console.log('접속 로그 테이블이 준비되었습니다.');
     }
     tableCreated();
   });

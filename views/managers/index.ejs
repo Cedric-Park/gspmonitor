@@ -122,6 +122,11 @@
             등록된 담당자가 없습니다. 새 담당자를 추가해주세요.
           </div>
         <% } else { %>
+          <div class="d-flex justify-content-end mb-3">
+            <a href="/managers/access-logs" class="btn btn-outline-primary">
+              <i class="bi bi-clock-history"></i> 전체 접속 로그 보기
+            </a>
+          </div>
           <div class="table-responsive">
             <table class="table table-bordered table-hover">
               <thead class="table-light">
@@ -346,6 +351,7 @@
                   <th>로그아웃 시간</th>
                   <th>IP 주소</th>
                   <th>브라우저</th>
+                  <th>관리</th>
                 </tr>
               </thead>
               <tbody id="accessLogTableBody">
@@ -362,6 +368,7 @@
         </div>
       </div>
       <div class="modal-footer">
+        <a href="/managers/access-logs" class="btn btn-primary">전체 접속 로그 보기</a>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
       </div>
     </div>
@@ -480,13 +487,17 @@
                 
                 // 접속 시간
                 const loginTimeCell = document.createElement('td');
-                loginTimeCell.textContent = new Date(log.login_time).toLocaleString('ko-KR');
+                // ISO 문자열에서 날짜 부분만 추출하여 표시
+                const loginDate = new Date(log.login_time);
+                // 시간대를 고려하여 한국 시간으로 표시
+                loginTimeCell.textContent = loginDate.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
                 row.appendChild(loginTimeCell);
                 
                 // 로그아웃 시간
                 const logoutTimeCell = document.createElement('td');
                 if (log.logout_time) {
-                  logoutTimeCell.textContent = new Date(log.logout_time).toLocaleString('ko-KR');
+                  const logoutDate = new Date(log.logout_time);
+                  logoutTimeCell.textContent = logoutDate.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
                 } else {
                   logoutTimeCell.innerHTML = '<span class="text-muted">기록 없음</span>';
                 }
@@ -501,6 +512,21 @@
                 const browserCell = document.createElement('td');
                 browserCell.innerHTML = `<small class="text-muted">${log.user_agent || '-'}</small>`;
                 row.appendChild(browserCell);
+                
+                // 삭제 버튼 추가
+                const actionCell = document.createElement('td');
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'btn btn-sm btn-outline-danger';
+                deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+                deleteButton.title = '접속 기록 삭제';
+                deleteButton.dataset.logId = log.id;
+                deleteButton.onclick = function() {
+                  if (confirm('이 접속 기록을 삭제하시겠습니까?')) {
+                    deleteAccessLog(log.id, managerId);
+                  }
+                };
+                actionCell.appendChild(deleteButton);
+                row.appendChild(actionCell);
                 
                 tbody.appendChild(row);
               });
@@ -522,5 +548,34 @@
           });
       });
     });
+    
+    // 접속 로그 삭제 함수
+    function deleteAccessLog(logId, managerId) {
+      fetch(`/managers/api/access-log/${logId}`, {
+        method: 'DELETE',
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // 성공적으로 삭제된 경우 해당 로그 항목 제거
+          const row = document.querySelector(`button[data-log-id="${logId}"]`).closest('tr');
+          row.remove();
+          
+          // 남은 로그가 없는 경우 메시지 표시
+          const tbody = document.getElementById('accessLogTableBody');
+          if (tbody.children.length === 0) {
+            document.getElementById('accessLogEmpty').style.display = 'block';
+          }
+          
+          alert('접속 기록이 삭제되었습니다.');
+        } else {
+          alert('접속 기록 삭제 중 오류가 발생했습니다: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('접속 기록 삭제 오류:', error);
+        alert('접속 기록 삭제 중 오류가 발생했습니다.');
+      });
+    }
   });
 </script> 

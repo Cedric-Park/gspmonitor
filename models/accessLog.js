@@ -5,10 +5,12 @@ const db = require('../db/database');
  * @returns {string} 한국 시간 ISO 문자열
  */
 function getCurrentKoreanTime() {
+  // 현재 시간 가져오기
   const now = new Date();
-  // 한국 시간으로 변환 (UTC+9)
-  const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-  return koreaTime.toISOString();
+  
+  // 현재 서버 시간을 그대로 사용 (서버가 이미 KST로 설정되어 있다고 가정)
+  // ISO 문자열로 변환하여 반환
+  return now.toISOString();
 }
 
 /**
@@ -136,8 +138,64 @@ function getManagerAccessLogs(managerId, options = {}) {
   });
 }
 
+/**
+ * 접속 로그 목록 가져오기 (필터링 지원)
+ * @param {Object} filters 필터링 옵션
+ * @returns {Promise<Array>} 접속 로그 배열
+ */
+function getAccessLogs(filters = {}) {
+  return new Promise((resolve, reject) => {
+    let query = `
+      SELECT al.*, m.name as manager_name, m.email as manager_email
+      FROM access_logs al
+      LEFT JOIN managers m ON al.manager_id = m.id
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    // 담당자 ID 필터
+    if (filters.manager_id) {
+      query += ` AND al.manager_id = ?`;
+      params.push(filters.manager_id);
+    }
+    
+    // 액션 필터
+    if (filters.action) {
+      query += ` AND al.action = ?`;
+      params.push(filters.action);
+    }
+    
+    // 시작일 필터
+    if (filters.start_date) {
+      query += ` AND DATE(al.login_time) >= DATE(?)`;
+      params.push(filters.start_date);
+    }
+    
+    // 종료일 필터
+    if (filters.end_date) {
+      query += ` AND DATE(al.login_time) <= DATE(?)`;
+      params.push(filters.end_date);
+    }
+    
+    // 정렬 (기본: 최신순)
+    query += ` ORDER BY al.login_time DESC`;
+    
+    db.all(query, params, (err, rows) => {
+      if (err) {
+        console.error('접속 로그 조회 오류:', err);
+        reject(err);
+        return;
+      }
+      
+      resolve(rows || []);
+    });
+  });
+}
+
 module.exports = {
   createLoginLog,
   updateLogoutTime,
-  getManagerAccessLogs
+  getManagerAccessLogs,
+  getAccessLogs
 };
