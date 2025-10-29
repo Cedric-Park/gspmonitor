@@ -259,37 +259,27 @@ router.post('/initialize', async (req, res) => {
 // 담당자 권한 변경 처리
 router.post('/role', async (req, res) => {
   try {
-    const { manager_id, role } = req.body;
-    
-    // 현재 사용자가 어드민인지 확인
-    if (req.session.user.role !== '어드민') {
+    // 어드민 권한 확인
+    if (!req.session.user || req.session.user.role !== '어드민') {
       return res.status(403).render('error', {
         title: '권한 오류',
-        message: '담당자 권한을 변경할 수 있는 권한이 없습니다.',
-        error: { status: 403 }
+        message: '이 작업을 수행할 권한이 없습니다.',
+        error: {}
       });
     }
+    
+    const { manager_id, role } = req.body;
     
     // 유효성 검사
     if (!manager_id || !role) {
       return res.status(400).render('error', {
         title: '입력 오류',
-        message: '담당자 ID와 변경할 권한은 필수 입력 항목입니다.',
+        message: '담당자 ID와 권한은 필수 입력 항목입니다.',
         error: {}
       });
     }
     
-    // 지원하는 역할인지 확인
-    const validRoles = ['담당자', '매니저', '어드민'];
-    if (!validRoles.includes(role)) {
-      return res.status(400).render('error', {
-        title: '입력 오류',
-        message: '지원하지 않는 역할입니다.',
-        error: {}
-      });
-    }
-    
-    // 담당자 권한 변경
+    // 권한 변경
     await managerModel.updateManagerRole(manager_id, role);
     
     res.redirect('/managers?role_updated=true');
@@ -298,6 +288,44 @@ router.post('/role', async (req, res) => {
     res.status(500).render('error', {
       title: '오류 발생',
       message: '담당자 권한을 변경하는 중 오류가 발생했습니다.',
+      error
+    });
+  }
+});
+
+// 담당자 비밀번호 초기화
+router.post('/reset-password', async (req, res) => {
+  try {
+    // 어드민 권한 확인
+    if (!req.session.user || req.session.user.role !== '어드민') {
+      return res.status(403).render('error', {
+        title: '권한 오류',
+        message: '이 작업을 수행할 권한이 없습니다.',
+        error: {}
+      });
+    }
+    
+    const { manager_id } = req.body;
+    
+    // 유효성 검사
+    if (!manager_id) {
+      return res.status(400).render('error', {
+        title: '입력 오류',
+        message: '담당자 ID는 필수 입력 항목입니다.',
+        error: {}
+      });
+    }
+    
+    // 비밀번호 초기화
+    const authModel = require('../models/auth');
+    await authModel.resetPassword(manager_id);
+    
+    res.redirect('/managers?password_reset=true');
+  } catch (error) {
+    console.error('비밀번호 초기화 오류:', error);
+    res.status(500).render('error', {
+      title: '오류 발생',
+      message: '비밀번호를 초기화하는 중 오류가 발생했습니다.',
       error
     });
   }

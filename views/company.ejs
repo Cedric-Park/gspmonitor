@@ -20,7 +20,13 @@
                 <!-- 포인트 사용량 진행률 바 -->
                 <div class="mb-4">
                   <% 
-                    const totalAvailable = totalBasePoints + totalSelfPoints;
+                    // 우수포인트 계산
+                    let totalExcellentPointsForProgress = 0;
+                    if (gamesWithUsage && gamesWithUsage.length > 0) {
+                      totalExcellentPointsForProgress = gamesWithUsage.reduce((sum, game) => sum + (game.excellentPoints || 0), 0);
+                    }
+                    
+                    const totalAvailable = totalBasePoints + totalSelfPoints + totalExcellentPointsForProgress;
                     
                     // 전체 사용률은 총 계약 금액(자부담/기본 구분 없이)을 기준으로 계산
                     const totalContractUsed = typeof totalContractAmount !== 'undefined' ? totalContractAmount : 0;
@@ -56,7 +62,7 @@
 
                 <!-- 포인트 상세 정보 -->
                 <div class="row">
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <div class="card bg-light">
                       <div class="card-body text-center">
                         <h6 class="card-subtitle mb-2 text-muted">기본 포인트</h6>
@@ -67,7 +73,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <div class="card bg-light">
                       <div class="card-body text-center">
                         <h6 class="card-subtitle mb-2 text-muted">자부담 포인트</h6>
@@ -78,11 +84,65 @@
                       </div>
                     </div>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
+                    <div class="card bg-warning">
+                      <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2 text-dark">우수 포인트</h6>
+                        <% 
+                          let totalExcellentPoints = 0;
+                          let totalExcellentUsed = 0;
+                          if (gamesWithUsage && gamesWithUsage.length > 0) {
+                            totalExcellentPoints = gamesWithUsage.reduce((sum, game) => sum + (game.excellentPoints || 0), 0);
+                            totalExcellentUsed = gamesWithUsage.reduce((sum, game) => sum + (game.pointsUsed.excellent || 0), 0);
+                          }
+                        %>
+                        <h4 class="card-text text-dark"><%= totalExcellentPoints.toLocaleString() %> P</h4>
+                        <% if (totalExcellentUsed > 0) { %>
+                        <small class="text-dark">사용: <%= totalExcellentUsed.toLocaleString() %> P</small>
+                        <% } %>
+                        
+                        <!-- 우수게임사 토글 (어드민만) -->
+                        <% if (userRole === '어드민') { %>
+                        <div class="mt-2">
+                          <div class="d-flex justify-content-center gap-1">
+                            <% 
+                              let hasExcellent1st = false, hasExcellent2nd = false, hasExcellent3rd = false;
+                              if (gamesWithUsage && gamesWithUsage.length > 0) {
+                                hasExcellent1st = gamesWithUsage.some(game => game.isExcellent1st);
+                                hasExcellent2nd = gamesWithUsage.some(game => game.isExcellent2nd);
+                                hasExcellent3rd = gamesWithUsage.some(game => game.isExcellent3rd);
+                              }
+                            %>
+                            <button class="btn btn-sm <%= hasExcellent1st ? 'btn-success' : 'btn-outline-secondary' %>" 
+                                    onclick="toggleExcellentCompany('1st')" 
+                                    title="1차 우수게임사">
+                              🥇
+                            </button>
+                            <button class="btn btn-sm <%= hasExcellent2nd ? 'btn-success' : 'btn-outline-secondary' %>" 
+                                    onclick="toggleExcellentCompany('2nd')" 
+                                    title="2차 우수게임사">
+                              🥈
+                            </button>
+                            <button class="btn btn-sm <%= hasExcellent3rd ? 'btn-success' : 'btn-outline-secondary' %>" 
+                                    onclick="toggleExcellentCompany('3rd')" 
+                                    title="3차 우수게임사">
+                              🥉
+                            </button>
+                          </div>
+                          <small class="text-dark d-block mt-1">우수게임사 지정</small>
+                        </div>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
                     <div class="card bg-primary text-white">
                       <div class="card-body text-center">
                         <h6 class="card-subtitle mb-2">총 포인트</h6>
-                        <h4 class="card-text"><%= totalPoints.toLocaleString() %> P</h4>
+                        <% 
+                          const actualTotalPoints = totalBasePoints + totalSelfPoints + totalExcellentPoints;
+                        %>
+                        <h4 class="card-text"><%= actualTotalPoints.toLocaleString() %> P</h4>
                         <small>사용 가능</small>
                       </div>
                     </div>
@@ -1334,6 +1394,53 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('초기 차트 렌더링 시작');
   updatePerformanceChart();
 });
+
+// 우수게임사 토글 함수
+async function toggleExcellentCompany(phase) {
+  try {
+    // 현재 게임사의 첫 번째 게임 ID를 가져옴
+    const gameId = '<%= games.length > 0 ? games[0].id : "" %>';
+    if (!gameId) {
+      alert('게임 정보를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 현재 상태 확인
+    const statusResponse = await fetch(`/points/excellent/${gameId}`);
+    const statusResult = await statusResponse.json();
+    
+    if (!statusResult.success) {
+      alert('우수게임사 상태 조회 오류: ' + statusResult.message);
+      return;
+    }
+    
+    // 현재 해당 차수의 상태 확인
+    const currentStatus = statusResult.status[`is_excellent_${phase}`];
+    const newStatus = !currentStatus;
+    
+    // 토글 요청
+    const response = await fetch(`/points/excellent/${gameId}/${phase}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        isExcellent: newStatus
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // 성공시 페이지 새로고침으로 데이터 업데이트
+      location.reload();
+    } else {
+      alert('오류: ' + result.message);
+    }
+  } catch (error) {
+    alert('우수게임사 설정 중 오류가 발생했습니다: ' + error.message);
+  }
+}
 
 // 포인트 사용 토글 함수
 async function togglePointUsage(switchElement) {

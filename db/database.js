@@ -46,6 +46,12 @@ function initDatabase() {
       base_points INTEGER DEFAULT 0,
       self_points INTEGER DEFAULT 0,
       total_points INTEGER DEFAULT 0,
+      excellent_1st_points INTEGER DEFAULT 0,
+      excellent_2nd_points INTEGER DEFAULT 0,
+      excellent_3rd_points INTEGER DEFAULT 0,
+      is_excellent_1st BOOLEAN DEFAULT 0,
+      is_excellent_2nd BOOLEAN DEFAULT 0,
+      is_excellent_3rd BOOLEAN DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
@@ -54,6 +60,9 @@ function initDatabase() {
       console.error('게임 테이블 생성 오류:', err.message);
     } else {
       console.log('게임 테이블이 준비되었습니다.');
+      
+      // 기존 테이블에 새 컬럼들 추가 (ALTER TABLE)
+      addExcellentPointsColumns();
     }
     completeOperation();
   });
@@ -152,6 +161,41 @@ function createManagersTable() {
     } else {
       console.log('담당자 테이블이 준비되었습니다.');
     }
+  });
+}
+
+// 우수포인트 컬럼 추가 함수
+function addExcellentPointsColumns() {
+  // 기존 테이블에 우수포인트 관련 컬럼들이 있는지 확인하고 없으면 추가
+  db.all("PRAGMA table_info(games)", (err, columns) => {
+    if (err) {
+      console.error('게임 테이블 컬럼 정보 조회 오류:', err.message);
+      return;
+    }
+    
+    const columnNames = columns.map(col => col.name);
+    console.log('현재 games 테이블 컬럼:', columnNames);
+    
+    const columnsToAdd = [
+      { name: 'excellent_1st_points', definition: 'INTEGER DEFAULT 0' },
+      { name: 'excellent_2nd_points', definition: 'INTEGER DEFAULT 0' },
+      { name: 'excellent_3rd_points', definition: 'INTEGER DEFAULT 0' },
+      { name: 'is_excellent_1st', definition: 'BOOLEAN DEFAULT 0' },
+      { name: 'is_excellent_2nd', definition: 'BOOLEAN DEFAULT 0' },
+      { name: 'is_excellent_3rd', definition: 'BOOLEAN DEFAULT 0' }
+    ];
+    
+    columnsToAdd.forEach(column => {
+      if (!columnNames.includes(column.name)) {
+        db.run(`ALTER TABLE games ADD COLUMN ${column.name} ${column.definition}`, (alterErr) => {
+          if (alterErr) {
+            console.error(`${column.name} 컬럼 추가 오류:`, alterErr.message);
+          } else {
+            console.log(`${column.name} 컬럼이 추가되었습니다.`);
+          }
+        });
+      }
+    });
   });
 }
 

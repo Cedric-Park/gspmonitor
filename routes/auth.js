@@ -8,6 +8,7 @@ dotenv.config();
 // 환경에 따라 다른 인증 모델 사용
 const isVercel = process.env.VERCEL === '1';
 const authModel = isVercel ? require('../models/mongoAuth') : require('../models/auth');
+const accessLogModel = require('../models/accessLog');
 
 // 로그인 페이지
 router.get('/login', (req, res) => {
@@ -43,12 +44,39 @@ router.post('/login', async (req, res) => {
     } catch (authError) {
       console.error('인증 모듈 오류:', authError);
       req.flash('error', '인증 과정에서 오류가 발생했습니다.');
+      
+      // 로그인 실패 로그 기록
+      try {
+        await accessLogModel.createLoginLog({
+          manager_email: email,
+          login_status: 'failed',
+          ip_address: req.ip,
+          user_agent: req.headers['user-agent'],
+          session_id: req.sessionID
+        });
+      } catch (logError) {
+        console.error('로그인 실패 로그 기록 오류:', logError);
+      }
+      
       return res.redirect('/auth/login');
     }
     
     console.log('인증 결과:', result.authenticated ? '성공' : '실패', result.message || '');
     
     if (!result.authenticated) {
+      // 로그인 실패 로그 기록
+      try {
+        await accessLogModel.createLoginLog({
+          manager_email: email,
+          login_status: 'failed',
+          ip_address: req.ip,
+          user_agent: req.headers['user-agent'],
+          session_id: req.sessionID
+        });
+      } catch (logError) {
+        console.error('로그인 실패 로그 기록 오류:', logError);
+      }
+      
       req.flash('error', result.message);
       return res.redirect('/auth/login');
     }
@@ -71,6 +99,23 @@ router.post('/login', async (req, res) => {
         email: result.user.email,
         role: result.user.role || '사용자'
       };
+      
+      // 로그인 성공 로그 기록
+      try {
+        await accessLogModel.createLoginLog({
+          manager_id: userId,
+          manager_name: result.user.name,
+          manager_email: result.user.email,
+          manager_role: result.user.role,
+          login_status: 'success',
+          ip_address: req.ip,
+          user_agent: req.headers['user-agent'],
+          session_id: req.sessionID
+        });
+        console.log('로그인 로그 기록 완료');
+      } catch (logError) {
+        console.error('로그인 로그 기록 오류:', logError);
+      }
       
       // 초기 비밀번호 사용 중인 경우 비밀번호 변경 페이지로 리디렉션
       if (result.needsPasswordChange) {
@@ -152,13 +197,29 @@ router.post('/change-password', async (req, res) => {
 });
 
 // 로그아웃
-router.get('/logout', (req, res) => {
-  req.session.destroy(err => {
-    if (err) {
-      console.error('세션 삭제 오류:', err);
+router.get('/logout', async (req, res) => {
+  try {
+    // 로그아웃 시간 기록
+    if (req.session && req.session.user && req.sessionID) {
+      try {
+        await accessLogModel.updateLogoutTime(req.sessionID);
+        console.log('로그아웃 시간 기록 완료');
+      } catch (logError) {
+        console.error('로그아웃 시간 기록 오류:', logError);
+      }
     }
+    
+    // 세션 삭제
+    req.session.destroy(err => {
+      if (err) {
+        console.error('세션 삭제 오류:', err);
+      }
+      res.redirect('/auth/login');
+    });
+  } catch (error) {
+    console.error('로그아웃 처리 오류:', error);
     res.redirect('/auth/login');
-  });
+  }
 });
 
 // 디버그 경로 - 세션 정보 확인

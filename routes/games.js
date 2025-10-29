@@ -56,7 +56,8 @@ router.get('/company/:companyName', async (req, res) => {
     // 전체 계약 금액 합산
     let totalContractAmount = 0;
     contracts.forEach(contract => {
-      if (contract.contract_amount && contract.selected_vendor) {
+      if (contract.contract_amount && contract.selected_vendor && 
+          (contract.status === '최종계약체결' || contract.status === '계약종료(정산)')) {
         const amount = parseContractAmount(contract.contract_amount);
         if (amount > 0) {
           totalContractAmount += amount;

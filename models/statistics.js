@@ -22,7 +22,8 @@ async function getCompanyUsageStatistics() {
       // 계약 금액 합산
       let totalContractAmount = 0;
       contracts.forEach(contract => {
-        if (contract.contract_amount && contract.selected_vendor) {
+        if (contract.contract_amount && contract.selected_vendor && 
+            (contract.status === '최종계약체결' || contract.status === '계약종료(정산)')) {
           const amount = pointCalculator.parseContractAmount(contract.contract_amount);
           if (amount > 0) {
             totalContractAmount += amount;
@@ -35,11 +36,31 @@ async function getCompanyUsageStatistics() {
         ? (totalContractAmount / company.total_points * 100)
         : 0;
       
+      // 우수포인트 계산을 위해 해당 게임사의 게임들 조회
+      const games = await gameModel.getAllGames();
+      const companyGames = games.filter(game => game.company_name === company.company_name);
+      
+      // 우수포인트 합계 계산
+      const totalExcellentPoints = companyGames.reduce((sum, game) => {
+        return sum + (game.excellent_1st_points || 0) + 
+                    (game.excellent_2nd_points || 0) + 
+                    (game.excellent_3rd_points || 0);
+      }, 0);
+      
+      // 실제 총 포인트 = 기존 total_points + 우수포인트
+      const actualTotalPoints = company.total_points + totalExcellentPoints;
+      const actualUsageRate = actualTotalPoints > 0 
+        ? (totalContractAmount / actualTotalPoints * 100)
+        : 0;
+
       result.push({
         company_name: company.company_name,
-        total_points: company.total_points,
+        total_points: actualTotalPoints,
+        base_points: company.total_base_points || 0,
+        self_points: company.total_self_points || 0,
+        excellent_points: totalExcellentPoints,
         used_points: totalContractAmount,
-        usage_rate: usageRate
+        usage_rate: actualUsageRate
       });
     }
     
@@ -475,6 +496,91 @@ async function getAggregatedPerformanceData(companyName, gameName = null, period
   }
 }
 
+/**
+ * 게임사별 누적 매출 통계 가져오기
+ * @param {string} startDate 시작 날짜 (선택 사항, YYYY-MM-DD 형식)
+ * @param {string} endDate 종료 날짜 (선택 사항, YYYY-MM-DD 형식)
+ * @returns {Promise<Array>} 게임사별 누적 매출 통계 배열
+ */
+async function getCompanyRevenueStatistics(startDate = null, endDate = null) {
+  try {
+    console.log(`[통계 모델] 게임사별 누적 매출 통계 조회 - 기간: ${startDate || '전체'} ~ ${endDate || '전체'}`);
+    
+    // 모든 게임사 목록 가져오기
+    const query = `
+      SELECT DISTINCT company_name
+      FROM game_performance
+      ORDER BY company_name
+    `;
+    
+    const companies = await new Promise((resolve, reject) => {
+      db.all(query, [], (err, rows) => {
+        if (err) {
+          console.error('게임사 목록 조회 오류:', err);
+          reject(err);
+        } else {
+          resolve(rows.map(row => row.company_name));
+        }
+      });
+    });
+    
+    // 각 게임사별 누적 매출 계산
+    const result = [];
+    
+    for (const companyName of companies) {
+      // 해당 게임사의 모든 게임 성과 데이터 가져오기
+      let revenueQuery = `
+        SELECT SUM(revenue_global) as total_global_revenue,
+               SUM(revenue_domestic) as total_domestic_revenue
+        FROM game_performance
+        WHERE company_name = ?
+      `;
+      
+      const params = [companyName];
+      
+      // 날짜 필터 추가
+      if (startDate) {
+        revenueQuery += ` AND date >= ?`;
+        params.push(startDate);
+      }
+      
+      if (endDate) {
+        revenueQuery += ` AND date <= ?`;
+        params.push(endDate);
+      }
+      
+      const revenueData = await new Promise((resolve, reject) => {
+        db.get(revenueQuery, params, (err, row) => {
+          if (err) {
+            console.error(`${companyName} 매출 데이터 조회 오류:`, err);
+            reject(err);
+          } else {
+            resolve(row);
+          }
+        });
+      });
+      
+      // 전역 매출과 국내 매출 합산
+      const totalRevenue = (revenueData.total_global_revenue || 0) + (revenueData.total_domestic_revenue || 0);
+      
+      result.push({
+        company_name: companyName,
+        global_revenue: revenueData.total_global_revenue || 0,
+        domestic_revenue: revenueData.total_domestic_revenue || 0,
+        total_revenue: totalRevenue
+      });
+    }
+    
+    // 총 매출 기준 내림차순 정렬
+    result.sort((a, b) => b.total_revenue - a.total_revenue);
+    
+    return result;
+  } catch (error) {
+    console.error('게임사별 누적 매출 통계 조회 오류:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCompanyUsageStatistics,
   getServiceCategoryStatistics,
@@ -483,5 +589,6 @@ module.exports = {
   saveGamePerformanceData,
   getGamePerformanceData,
   syncGamePerformanceData,
-  getAggregatedPerformanceData
+  getAggregatedPerformanceData,
+  getCompanyRevenueStatistics
 }; 

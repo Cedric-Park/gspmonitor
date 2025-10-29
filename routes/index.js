@@ -69,8 +69,9 @@ router.get('/', async (req, res) => {
         // 전체 계약 금액 합산
         if (contracts && contracts.length > 0) {
           contracts.forEach(contract => {
-            // 계약완료 상태인 계약만 합산
-            if (contract.contract_amount && contract.selected_vendor && contract.status === '최종계약체결') {
+            // 계약완료 상태인 계약만 합산 (최종계약체결 또는 계약종료(정산))
+            if (contract.contract_amount && contract.selected_vendor && 
+                (contract.status === '최종계약체결' || contract.status === '계약종료(정산)')) {
               const amount = pointCalculator.parseContractAmount(contract.contract_amount);
               if (amount > 0) {
                 totalContractAmount += amount;
@@ -145,11 +146,44 @@ router.get('/statistics', async (req, res, next) => {
   next();
 }, async (req, res) => {
   try {
+    // 날짜 범위 파라미터 처리
+    const startDate = req.query.start_date || null;
+    const endDate = req.query.end_date || null;
+    
+    // 날짜 범위 유효성 검사
+    let dateRangeValid = true;
+    let dateError = null;
+    
+    if (startDate && endDate) {
+      // 날짜 형식 검증 (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+        dateRangeValid = false;
+        dateError = '날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력해주세요.';
+      } else {
+        // 시작일이 종료일보다 이후인지 검사
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        if (startDateObj > endDateObj) {
+          dateRangeValid = false;
+          dateError = '시작일은 종료일보다 이전이어야 합니다.';
+        }
+      }
+    }
+    
     // 게임사별 포인트 사용률 통계 가져오기
     const companyUsageStats = await statisticsModel.getCompanyUsageStatistics();
     
     // 서비스 부문별 포인트 사용 통계 가져오기
     const serviceCategoryStats = await statisticsModel.getServiceCategoryStatistics();
+    
+    // 게임사별 누적 매출 통계 가져오기 (날짜 범위 적용)
+    const companyRevenueStats = dateRangeValid 
+      ? await statisticsModel.getCompanyRevenueStatistics(startDate, endDate)
+      : await statisticsModel.getCompanyRevenueStatistics();
+    
+    // 총 누적 매출 계산
+    const totalRevenue = companyRevenueStats.reduce((sum, company) => sum + company.total_revenue, 0);
     
     // 마지막 동기화 시간과 다음 동기화까지 남은 시간 정보 가져오기
     const syncInfo = await gameModel.getNextSyncInfo();
@@ -157,11 +191,28 @@ router.get('/statistics', async (req, res, next) => {
     // PDF 내보내기를 위한 플래그 추가
     const exportToPdf = req.query.export === 'true';
     
+    // 현재 날짜를 기본값으로 설정 (필터 초기값용)
+    const today = new Date();
+    const defaultEndDate = today.toISOString().split('T')[0];
+    
+    // 3개월 전 날짜를 기본 시작일로 설정
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(today.getMonth() - 3);
+    const defaultStartDate = threeMonthsAgo.toISOString().split('T')[0];
+    
     res.render('statistics', {
       title: '포인트 통계',
       companyUsageStats,
       serviceCategoryStats,
+      companyRevenueStats,
+      totalRevenue,
       exportToPdf, // PDF 내보내기 플래그 전달
+      dateFilter: {
+        startDate: startDate || defaultStartDate,
+        endDate: endDate || defaultEndDate,
+        isValid: dateRangeValid,
+        error: dateError
+      },
       syncInfo: {
         lastSync: syncInfo.lastSync ? syncInfo.lastSync.toLocaleString('ko-KR') : '정보 없음',
         nextSync: syncInfo.nextSync ? syncInfo.nextSync.toLocaleString('ko-KR') : '정보 없음',

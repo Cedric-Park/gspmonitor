@@ -27,136 +27,335 @@
       <div class="card-body">
         <% if (typeof companyUsageStats !== 'undefined' && companyUsageStats.length > 0) { %>
           
-          <!-- 포인트 현황 카드 -->
-          <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-              <div class="card text-white h-100" style="background-color: #4A568D;">
-                <div class="card-body text-center">
-                  <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + company.total_points, 0).toLocaleString() %> P</h3>
-                  <small>총 배정 포인트</small>
-                </div>
+          <% if (typeof companyRevenueStats !== 'undefined' && companyRevenueStats.length > 0) { %>
+          <!-- 기간 선택 필터 -->
+          <div class="mb-4">
+            <div class="card shadow">
+              <div class="card-header bg-light">
+                <h5 class="mb-0">기간 선택</h5>
               </div>
-            </div>
-            <div class="col-md-3 mb-3">
-              <div class="card text-white h-100" style="background-color: #B85450;">
-                <div class="card-body text-center">
-                  <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + company.used_points, 0).toLocaleString() %> P</h3>
-                  <small>총 사용 포인트</small>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3 mb-3">
-              <div class="card text-white h-100" style="background-color: #5A8A5A;">
-                <div class="card-body text-center">
-                  <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + (company.total_points - company.used_points), 0).toLocaleString() %> P</h3>
-                  <small>총 잔여 포인트</small>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3 mb-3">
-              <div class="card text-white h-100" style="background-color: #C8A869;">
-                <div class="card-body text-center">
-                  <% 
-                    const totalAlloc = companyUsageStats.reduce((sum, company) => sum + company.total_points, 0);
-                    const totalUsed = companyUsageStats.reduce((sum, company) => sum + company.used_points, 0);
-                    const usageRate = totalAlloc > 0 ? (totalUsed / totalAlloc * 100) : 0;
-                  %>
-                  <h3 class="mb-1"><%= usageRate.toFixed(1) %>%</h3>
-                  <small>전체 사용률</small>
-                </div>
+              <div class="card-body">
+                <% if (typeof dateFilter !== 'undefined' && !dateFilter.isValid && dateFilter.error) { %>
+                  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>오류:</strong> <%= dateFilter.error %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                <% } %>
+                <form id="dateFilterForm" action="/statistics" method="GET" class="row g-3 align-items-end">
+                  <div class="col-md-4">
+                    <label for="start_date" class="form-label">시작일</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="<%= typeof dateFilter !== 'undefined' ? dateFilter.startDate : '' %>">
+                  </div>
+                  <div class="col-md-4">
+                    <label for="end_date" class="form-label">종료일</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="<%= typeof dateFilter !== 'undefined' ? dateFilter.endDate : '' %>">
+                  </div>
+                  <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                      <i class="bi bi-search me-1"></i> 적용
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
           
-          <!-- 게임사별 포인트 사용률 차트 -->
-          <div class="row mb-4">
-            <div class="col-md-12">
-              <div class="card shadow">
-                <div class="card-header bg-light">
-                  <h5 class="mb-0">게임사별 포인트 사용률</h5>
+          <!-- 매출 관련 항목 그룹 -->
+          <div class="mb-5">
+            <h5 class="mb-3 text-primary">게임사 매출 현황 
+              <% if (typeof dateFilter !== 'undefined' && dateFilter.startDate && dateFilter.endDate) { %>
+                <small class="text-muted">(<%= dateFilter.startDate %> ~ <%= dateFilter.endDate %>)</small>
+              <% } %>
+            </h5>
+            
+            <!-- 게임사별 누적 매출 현황 카드 -->
+            <div class="row mb-4">
+              <div class="col-md-4 mb-3">
+                <div class="card text-white h-100" style="background-color: #6A5ACD;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1"><%= totalRevenue.toLocaleString() %> 원</h3>
+                    <small>게임사 총 누적 매출</small>
+                  </div>
                 </div>
-                <div class="card-body" style="height: 400px;">
-                  <canvas id="pointsChart"></canvas>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card text-white h-100" style="background-color: #5B9BD5;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1"><%= companyRevenueStats.reduce((sum, company) => sum + company.global_revenue, 0).toLocaleString() %> 원</h3>
+                    <small>글로벌 매출</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card text-white h-100" style="background-color: #ED7D31;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1"><%= companyRevenueStats.reduce((sum, company) => sum + company.domestic_revenue, 0).toLocaleString() %> 원</h3>
+                    <small>국내 매출</small>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          <!-- 서비스 부문별 포인트 사용 통계 -->
-          <div class="row mb-4">
-            <div class="col-md-12">
-              <div class="card shadow h-100">
-                <div class="card-header bg-success text-white">
-                  <h5 class="mb-0">서비스 부문별 포인트 사용 분석</h5>
-                </div>
-                <div class="card-body d-flex align-items-center justify-content-center" style="height: 300px;">
-                  <canvas id="serviceCategoryChart"></canvas>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- 데이터 테이블 -->
-          <div class="row">
-            <div class="col-md-6">
-              <div class="card shadow">
-                <div class="card-header bg-light">
-                  <h5 class="mb-0">게임사별 포인트 사용률 상세</h5>
+            <!-- 게임사별 누적 매출 차트 -->
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <div class="card shadow">
+                  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">게임사별 누적 매출</h5>
+                    <div class="d-flex align-items-center">
+                      <div class="btn-group me-3" role="group">
+                        <input type="radio" class="btn-check" name="revenueType" id="revenueTypeTotal" checked>
+                        <label class="btn btn-outline-primary btn-sm" for="revenueTypeTotal">전체 매출</label>
+                        
+                        <input type="radio" class="btn-check" name="revenueType" id="revenueTypeGlobal">
+                        <label class="btn btn-outline-primary btn-sm" for="revenueTypeGlobal">글로벌 매출</label>
+                        
+                        <input type="radio" class="btn-check" name="revenueType" id="revenueTypeTarget">
+                        <label class="btn btn-outline-primary btn-sm" for="revenueTypeTarget">진출국가 매출</label>
+                        
+                        <input type="radio" class="btn-check" name="revenueType" id="revenueTypeDomestic">
+                        <label class="btn btn-outline-primary btn-sm" for="revenueTypeDomestic">국내 매출</label>
+                      </div>
+                      
+                      <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="periodDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                          빠른 기간 선택
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="periodDropdown">
+                          <li><a class="dropdown-item period-select" href="#" data-period="1month">최근 1개월</a></li>
+                          <li><a class="dropdown-item period-select" href="#" data-period="3month">최근 3개월</a></li>
+                          <li><a class="dropdown-item period-select" href="#" data-period="6month">최근 6개월</a></li>
+                          <li><a class="dropdown-item period-select" href="#" data-period="1year">최근 1년</a></li>
+                          <li><hr class="dropdown-divider"></li>
+                          <li><a class="dropdown-item period-select" href="#" data-period="all">전체 기간</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" style="height: 400px;">
+                    <canvas id="revenueChart"></canvas>
+                  </div>
                 </div>
-                <div class="card-body">
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead>
-                        <tr>
-                          <th>게임사</th>
-                          <th>총 포인트</th>
-                          <th>사용량</th>
-                          <th>사용률</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <% companyUsageStats.forEach(company => { %>
+              </div>
+            </div>
+
+            <!-- 게임사별 누적 매출 상세 테이블 -->
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <div class="card shadow">
+                  <div class="card-header bg-light">
+                    <h5 class="mb-0">게임사별 누적 매출 상세</h5>
+                  </div>
+                  <div class="card-body">
+                    <div class="table-responsive">
+                      <table class="table table-hover" id="revenueTable">
+                        <thead>
                           <tr>
-                            <td><a href="/games/company/<%= encodeURIComponent(company.company_name) %>"><%= company.company_name %></a></td>
-                            <td><%= company.total_points.toLocaleString() %></td>
-                            <td><%= company.used_points.toLocaleString() %></td>
-                            <td><span class="badge bg-<%= company.usage_rate >= 80 ? 'danger' : (company.usage_rate >= 50 ? 'warning' : 'success') %>">
-                              <%= company.usage_rate.toFixed(1) %>%
-                            </span></td>
+                            <th>게임사</th>
+                            <th id="revenueColumnHeader">총 매출</th>
                           </tr>
-                        <% }); %>
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          <% companyRevenueStats.forEach(company => { %>
+                            <tr>
+                              <td><a href="/games/company/<%= encodeURIComponent(company.company_name) %>"><%= company.company_name %></a></td>
+                              <td class="revenue-total"><strong><%= company.total_revenue.toLocaleString() %></strong></td>
+                              <td class="revenue-global" style="display:none;"><%= company.global_revenue.toLocaleString() %></td>
+                              <td class="revenue-domestic" style="display:none;"><%= company.domestic_revenue.toLocaleString() %></td>
+                              <td class="revenue-target" style="display:none;"><%= (company.total_revenue - company.domestic_revenue).toLocaleString() %></td>
+                            </tr>
+                          <% }); %>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <% } %>
+
+          <!-- 포인트 관련 항목 그룹 -->
+          <div class="mb-4">
+            <h5 class="mb-3 text-primary">포인트 사용 현황</h5>
+            
+            <!-- 포인트 현황 카드 -->
+            <div class="row mb-4">
+              <div class="col-md-2 mb-3">
+                <div class="card text-white h-100" style="background-color: #4A568D;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + company.total_points, 0).toLocaleString() %> P</h3>
+                    <small>총 배정 포인트</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-2 mb-3">
+                <div class="card text-white h-100" style="background-color: #6C757D;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + (company.base_points || 0), 0).toLocaleString() %> P</h3>
+                    <small>기본 포인트</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-2 mb-3">
+                <div class="card text-white h-100" style="background-color: #17A2B8;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + (company.self_points || 0), 0).toLocaleString() %> P</h3>
+                    <small>자부담 포인트</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-2 mb-3">
+                <div class="card text-white h-100" style="background-color: #FFC107;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1 text-dark"><%= companyUsageStats.reduce((sum, company) => sum + (company.excellent_points || 0), 0).toLocaleString() %> P</h3>
+                    <small class="text-dark">우수 포인트</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-2 mb-3">
+                <div class="card text-white h-100" style="background-color: #B85450;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + company.used_points, 0).toLocaleString() %> P</h3>
+                    <small>총 사용 포인트</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-2 mb-3">
+                <div class="card text-white h-100" style="background-color: #5A8A5A;">
+                  <div class="card-body text-center">
+                    <h3 class="mb-1"><%= companyUsageStats.reduce((sum, company) => sum + (company.total_points - company.used_points), 0).toLocaleString() %> P</h3>
+                    <small>총 잔여 포인트</small>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div class="col-md-6">
-              <div class="card shadow">
-                <div class="card-header bg-light">
-                  <h5 class="mb-0">서비스 부문별 포인트 사용 상세</h5>
+            <!-- 사용률 카드 -->
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <div class="card text-white" style="background-color: #C8A869;">
+                  <div class="card-body text-center">
+                    <% 
+                      const totalAlloc = companyUsageStats.reduce((sum, company) => sum + company.total_points, 0);
+                      const totalUsed = companyUsageStats.reduce((sum, company) => sum + company.used_points, 0);
+                      const usageRate = totalAlloc > 0 ? (totalUsed / totalAlloc * 100) : 0;
+                    %>
+                    <h2 class="mb-1"><%= usageRate.toFixed(1) %>%</h2>
+                    <h5>전체 사용률</h5>
+                  </div>
                 </div>
-                <div class="card-body">
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead>
-                        <tr>
-                          <th>서비스 부문</th>
-                          <th>사용량</th>
-                          <th>비율</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <% serviceCategoryStats.categories.forEach(category => { %>
+              </div>
+            </div>
+
+            <!-- 서비스 부문별 포인트 사용 통계 -->
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <div class="card shadow h-100">
+                  <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">서비스 부문별 포인트 사용 분석</h5>
+                  </div>
+                  <div class="card-body d-flex align-items-center justify-content-center" style="height: 300px;">
+                    <canvas id="serviceCategoryChart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 게임사별 포인트 사용률 차트 -->
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <div class="card shadow">
+                  <div class="card-header bg-light">
+                    <h5 class="mb-0">게임사별 포인트 사용률</h5>
+                  </div>
+                  <div class="card-body" style="height: 400px;">
+                    <canvas id="pointsChart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 포인트 데이터 테이블 -->
+            <div class="row">
+              <div class="col-md-6">
+                <div class="card shadow">
+                  <div class="card-header bg-light">
+                    <h5 class="mb-0">게임사별 포인트 사용률 상세</h5>
+                  </div>
+                  <div class="card-body">
+                    <div class="table-responsive">
+                      <table class="table table-hover">
+                        <thead>
                           <tr>
-                            <td><%= category.category %></td>
-                            <td><%= category.amount.toLocaleString() %></td>
-                            <td><span class="badge bg-primary"><%= category.percentage.toFixed(1) %>%</span></td>
+                            <th>게임사</th>
+                            <th>기본</th>
+                            <th>자부담</th>
+                            <th>우수</th>
+                            <th>총 포인트</th>
+                            <th>사용량</th>
+                            <th>사용률</th>
                           </tr>
-                        <% }); %>
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          <% companyUsageStats.forEach(company => { %>
+                            <tr>
+                              <td>
+                                <a href="/games/company/<%= encodeURIComponent(company.company_name) %>">
+                                  <%= company.company_name %>
+                                </a>
+                                <!-- 우수게임사 아이콘 표시 -->
+                                <% if (company.excellent_points > 0) { %>
+                                  <span class="ms-2">
+                                    <% if (company.excellent_points >= 300000000) { %>🥇🥈🥉<% } 
+                                       else if (company.excellent_points >= 200000000) { %>🥇🥈<% } 
+                                       else if (company.excellent_points >= 100000000) { %>🥇<% } %>
+                                  </span>
+                                <% } %>
+                              </td>
+                              <td><%= (company.base_points || 0).toLocaleString() %></td>
+                              <td><%= (company.self_points || 0).toLocaleString() %></td>
+                              <td class="text-warning fw-bold"><%= (company.excellent_points || 0).toLocaleString() %></td>
+                              <td class="fw-bold"><%= company.total_points.toLocaleString() %></td>
+                              <td><%= company.used_points.toLocaleString() %></td>
+                              <td><span class="badge bg-<%= company.usage_rate >= 80 ? 'danger' : (company.usage_rate >= 50 ? 'warning' : 'success') %>">
+                                <%= company.usage_rate.toFixed(1) %>%
+                              </span></td>
+                            </tr>
+                          <% }); %>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="card shadow">
+                  <div class="card-header bg-light">
+                    <h5 class="mb-0">서비스 부문별 포인트 사용 상세</h5>
+                  </div>
+                  <div class="card-body">
+                    <div class="table-responsive">
+                      <table class="table table-hover">
+                        <thead>
+                          <tr>
+                            <th>서비스 부문</th>
+                            <th>사용량</th>
+                            <th>비율</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% serviceCategoryStats.categories.forEach(category => { %>
+                            <tr>
+                              <td><%= category.category %></td>
+                              <td><%= category.amount.toLocaleString() %></td>
+                              <td><span class="badge bg-primary"><%= category.percentage.toFixed(1) %>%</span></td>
+                            </tr>
+                          <% }); %>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -187,6 +386,17 @@
     const categoryAmounts = [<%- serviceCategoryStats.categories.map(c => c.amount).join(',') %>];
     const categoryPercentages = [<%- serviceCategoryStats.categories.map(c => c.percentage).join(',') %>];
     
+    <% if (typeof companyRevenueStats !== 'undefined' && companyRevenueStats.length > 0) { %>
+    // 게임사별 누적 매출 차트 데이터
+    const revenueCompanies = [<%- companyRevenueStats.map(c => `'${c.company_name}'`).join(',') %>];
+    const globalRevenues = [<%- companyRevenueStats.map(c => c.global_revenue).join(',') %>];
+    const domesticRevenues = [<%- companyRevenueStats.map(c => c.domestic_revenue).join(',') %>];
+    const totalRevenues = [<%- companyRevenueStats.map(c => c.total_revenue).join(',') %>];
+    
+    // 진출국가 매출 계산 (전체 - 국내)
+    const targetRevenues = totalRevenues.map((total, i) => total - domesticRevenues[i]);
+    <% } %>
+    
     // 색상 정의
     const categoryColors = [
       'rgba(75, 192, 192, 0.7)',
@@ -198,6 +408,253 @@
     
     // PDF 내보내기 감지
     const isPdfExport = <%= typeof exportToPdf !== 'undefined' && exportToPdf ? 'true' : 'false' %>;
+    
+    <% if (typeof companyRevenueStats !== 'undefined' && companyRevenueStats.length > 0) { %>
+    // 게임사별 누적 매출 차트
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    let revenueChart = new Chart(revenueCtx, {
+      type: 'bar',
+      data: {
+        labels: revenueCompanies,
+        datasets: [
+          {
+            label: '총 매출',
+            data: totalRevenues,
+            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+          duration: isPdfExport ? 0 : 1000 // PDF 내보내기 시 애니메이션 비활성화
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.dataset.label || '';
+                const value = context.raw.toLocaleString();
+                return `${label}: ${value} 원`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: false
+          },
+          y: {
+            stacked: false,
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return value.toLocaleString();
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    // 라디오 버튼 이벤트 리스너 추가
+    document.getElementById('revenueTypeTotal').addEventListener('change', function() {
+      if(this.checked) {
+        updateRevenueDisplay('total');
+      }
+    });
+    
+    document.getElementById('revenueTypeGlobal').addEventListener('change', function() {
+      if(this.checked) {
+        updateRevenueDisplay('global');
+      }
+    });
+    
+    document.getElementById('revenueTypeTarget').addEventListener('change', function() {
+      if(this.checked) {
+        updateRevenueDisplay('target');
+      }
+    });
+    
+    document.getElementById('revenueTypeDomestic').addEventListener('change', function() {
+      if(this.checked) {
+        updateRevenueDisplay('domestic');
+      }
+    });
+    
+    // 매출 데이터 표시 업데이트 함수
+    function updateRevenueDisplay(type) {
+      // 1. 데이터 및 색상 설정
+      let data, label, color;
+      
+      switch(type) {
+        case 'global':
+          data = globalRevenues;
+          label = '글로벌 매출';
+          color = 'rgba(54, 162, 235, 0.7)';
+          break;
+        case 'target':
+          data = targetRevenues;
+          label = '진출국가 매출';
+          color = 'rgba(75, 192, 192, 0.7)';
+          break;
+        case 'domestic':
+          data = domesticRevenues;
+          label = '국내 매출';
+          color = 'rgba(255, 99, 132, 0.7)';
+          break;
+        default: // total
+          data = totalRevenues;
+          label = '총 매출';
+          color = 'rgba(54, 162, 235, 0.7)';
+      }
+      
+      // 2. 데이터 정렬
+      const sortedData = sortByRevenue(revenueCompanies, data);
+      
+      // 3. 차트 업데이트
+      updateRevenueChart(label, color, sortedData);
+      
+      // 4. 테이블 업데이트
+      updateRevenueTable(type, sortedData.indices);
+    }
+    
+    // 매출 기준으로 정렬하는 함수
+    function sortByRevenue(companies, revenues) {
+      // 회사명과 매출을 함께 저장
+      const combined = [];
+      for (let i = 0; i < companies.length; i++) {
+        combined.push({
+          company: companies[i],
+          revenue: revenues[i],
+          originalIndex: i
+        });
+      }
+      
+      // 매출 기준 내림차순 정렬
+      combined.sort((a, b) => b.revenue - a.revenue);
+      
+      // 정렬된 결과 반환
+      const labels = [];
+      const values = [];
+      const indices = [];
+      
+      for (let i = 0; i < combined.length; i++) {
+        labels.push(combined[i].company);
+        values.push(combined[i].revenue);
+        indices.push(combined[i].originalIndex);
+      }
+      
+      return {
+        labels: labels,
+        values: values,
+        indices: indices
+      };
+    }
+    
+    // 차트 업데이트 함수
+    function updateRevenueChart(label, color, sortedData) {
+      revenueChart.data.labels = sortedData.labels;
+      revenueChart.data.datasets = [{
+        label: label,
+        data: sortedData.values,
+        backgroundColor: color,
+        borderColor: color.replace('0.7', '1'),
+        borderWidth: 1
+      }];
+      
+      revenueChart.update();
+    }
+    
+    // 테이블 업데이트 함수
+    function updateRevenueTable(type, sortedIndices) {
+      // 헤더 업데이트
+      const headerText = {
+        'total': '총 매출',
+        'global': '글로벌 매출',
+        'target': '진출국가 매출',
+        'domestic': '국내 매출'
+      };
+      
+      document.getElementById('revenueColumnHeader').textContent = headerText[type];
+      
+      // 테이블 완전히 재구성
+      const table = document.getElementById('revenueTable');
+      const tbody = table.querySelector('tbody');
+      
+      // 원본 데이터 저장
+      const originalData = [];
+      for (let i = 0; i < revenueCompanies.length; i++) {
+        originalData.push({
+          company: revenueCompanies[i],
+          companyUrl: encodeURIComponent(revenueCompanies[i]),
+          total: totalRevenues[i],
+          global: globalRevenues[i],
+          domestic: domesticRevenues[i],
+          target: totalRevenues[i] - domesticRevenues[i]
+        });
+      }
+      
+      // 정렬된 데이터 생성
+      const sortedData = [];
+      for (let i = 0; i < sortedIndices.length; i++) {
+        sortedData.push(originalData[sortedIndices[i]]);
+      }
+      
+      // 테이블 내용 비우기
+      tbody.innerHTML = '';
+      
+      // 정렬된 데이터로 테이블 새로 구성
+      for (let i = 0; i < sortedData.length; i++) {
+        const row = document.createElement('tr');
+        
+        // 회사명 셀
+        const companyCell = document.createElement('td');
+        const companyLink = document.createElement('a');
+        companyLink.href = '/games/company/' + sortedData[i].companyUrl;
+        companyLink.textContent = sortedData[i].company;
+        companyCell.appendChild(companyLink);
+        row.appendChild(companyCell);
+        
+        // 총 매출 셀
+        const totalCell = document.createElement('td');
+        totalCell.className = 'revenue-total';
+        totalCell.innerHTML = '<strong>' + sortedData[i].total.toLocaleString() + '</strong>';
+        if (type !== 'total') totalCell.style.display = 'none';
+        row.appendChild(totalCell);
+        
+        // 글로벌 매출 셀
+        const globalCell = document.createElement('td');
+        globalCell.className = 'revenue-global';
+        globalCell.textContent = sortedData[i].global.toLocaleString();
+        if (type !== 'global') globalCell.style.display = 'none';
+        row.appendChild(globalCell);
+        
+        // 국내 매출 셀
+        const domesticCell = document.createElement('td');
+        domesticCell.className = 'revenue-domestic';
+        domesticCell.textContent = sortedData[i].domestic.toLocaleString();
+        if (type !== 'domestic') domesticCell.style.display = 'none';
+        row.appendChild(domesticCell);
+        
+        // 진출국가 매출 셀
+        const targetCell = document.createElement('td');
+        targetCell.className = 'revenue-target';
+        targetCell.textContent = sortedData[i].target.toLocaleString();
+        if (type !== 'target') targetCell.style.display = 'none';
+        row.appendChild(targetCell);
+        
+        // 행 추가
+        tbody.appendChild(row);
+      }
+    }
+    
+    // 초기 차트 설정 (페이지 로드 시)
+    updateRevenueDisplay('total');
+    <% } %>
     
     // 게임사별 포인트 사용률 차트
     const pointsCtx = document.getElementById('pointsChart').getContext('2d');
@@ -305,5 +762,54 @@
         document.dispatchEvent(new Event('charts-rendered'));
       });
     }
+    
+    // 빠른 기간 선택 이벤트 처리
+    document.addEventListener('DOMContentLoaded', function() {
+      // 빠른 기간 선택 드롭다운 항목 클릭 이벤트
+      document.querySelectorAll('.period-select').forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          const period = this.getAttribute('data-period');
+          const today = new Date();
+          let startDate = new Date();
+          
+          // 기간에 따른 시작일 설정
+          switch(period) {
+            case '1month':
+              startDate.setMonth(today.getMonth() - 1);
+              break;
+            case '3month':
+              startDate.setMonth(today.getMonth() - 3);
+              break;
+            case '6month':
+              startDate.setMonth(today.getMonth() - 6);
+              break;
+            case '1year':
+              startDate.setFullYear(today.getFullYear() - 1);
+              break;
+            case 'all':
+              // 전체 기간은 시작일과 종료일을 비워서 전송
+              document.getElementById('start_date').value = '';
+              document.getElementById('end_date').value = '';
+              document.getElementById('dateFilterForm').submit();
+              return;
+          }
+          
+          // 날짜 형식을 YYYY-MM-DD로 변환
+          const formatDate = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
+          
+          // 폼에 날짜 설정 후 제출
+          document.getElementById('start_date').value = formatDate(startDate);
+          document.getElementById('end_date').value = formatDate(today);
+          document.getElementById('dateFilterForm').submit();
+        });
+      });
+    });
   <% } %>
 </script> 

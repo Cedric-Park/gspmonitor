@@ -99,4 +99,63 @@ router.get('/usage/:gameId', requireAuth, async (req, res) => {
   }
 });
 
+// 우수게임사 토글
+router.post('/excellent/:gameId/:phase', requireAuth, requireRole(['어드민']), async (req, res) => {
+  try {
+    const { gameId, phase } = req.params;
+    const { isExcellent } = req.body;
+
+    // phase 유효성 검증
+    if (!['1st', '2nd', '3rd'].includes(phase)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '유효하지 않은 차수입니다. 1st, 2nd, 3rd 중 하나여야 합니다.' 
+      });
+    }
+
+    // 우수게임사 토글
+    const result = await pointCalculator.toggleExcellentCompany(gameId, phase, isExcellent);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    const phaseNames = {
+      '1st': '1차',
+      '2nd': '2차', 
+      '3rd': '3차'
+    };
+
+    res.json({ 
+      success: true, 
+      message: isExcellent 
+        ? `${phaseNames[phase]} 우수게임사로 지정되었습니다. (1억 포인트 추가)` 
+        : `${phaseNames[phase]} 우수게임사 지정이 해제되었습니다.`,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('우수게임사 토글 오류:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '우수게임사 설정 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
+// 우수게임사 상태 조회
+router.get('/excellent/:gameId', requireAuth, async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const status = await pointCalculator.getExcellentCompanyStatus(gameId);
+    res.json({ success: true, status });
+  } catch (error) {
+    console.error('우수게임사 상태 조회 오류:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '우수게임사 상태 조회 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
 module.exports = router; 

@@ -120,14 +120,22 @@
                       <td><%= log.ip_address || '-' %></td>
                       <td>
                         <% if (log.login_time) { %>
-                          <%= new Date(log.login_time).toLocaleString('ko-KR') %>
+                          <% try { %>
+                            <%= new Date(log.login_time).toLocaleString('ko-KR') %>
+                          <% } catch (e) { %>
+                            <%= log.login_time %>
+                          <% } %>
                         <% } else { %>
                           -
                         <% } %>
                       </td>
                       <td>
                         <% if (log.logout_time) { %>
-                          <%= new Date(log.logout_time).toLocaleString('ko-KR') %>
+                          <% try { %>
+                            <%= new Date(log.logout_time).toLocaleString('ko-KR') %>
+                          <% } catch (e) { %>
+                            <%= log.logout_time %>
+                          <% } %>
                         <% } else { %>
                           <span class="text-muted">-</span>
                         <% } %>

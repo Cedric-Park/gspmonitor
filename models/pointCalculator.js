@@ -15,33 +15,48 @@ function parseContractAmount(contractAmountStr) {
 }
 
 /**
- * 자부담 포인트 우선 사용 여부에 따라 포인트 분배 계산
+ * 우수포인트를 포함한 포인트 분배 계산
+ * 우선순위: 자부담 → 기본 → 우수
  */
-function calculatePointsDistribution(totalAmount, availableSelfPoints, availableBasePoints, useSelfPointsFirst = false) {
+function calculatePointsDistribution(totalAmount, availableSelfPoints, availableBasePoints, availableExcellentPoints = 0, useSelfPointsFirst = false) {
   let selfPointsUsed = 0;
   let basePointsUsed = 0;
+  let excellentPointsUsed = 0;
   
   if (useSelfPointsFirst) {
-    // 자부담포인트 우선 사용
-    if (totalAmount <= availableSelfPoints) {
-      selfPointsUsed = totalAmount;
-      basePointsUsed = 0;
-    } else {
-      selfPointsUsed = availableSelfPoints;
-      const remaining = totalAmount - availableSelfPoints;
+    // 자부담포인트 우선 사용: 자부담 → 기본 → 우수 순서
+    let remaining = totalAmount;
+    
+    // 1. 자부담 포인트 사용
+    if (remaining > 0 && availableSelfPoints > 0) {
+      selfPointsUsed = Math.min(remaining, availableSelfPoints);
+      remaining -= selfPointsUsed;
+    }
+    
+    // 2. 기본 포인트 사용
+    if (remaining > 0 && availableBasePoints > 0) {
       basePointsUsed = Math.min(remaining, availableBasePoints);
+      remaining -= basePointsUsed;
+    }
+    
+    // 3. 우수 포인트 사용
+    if (remaining > 0 && availableExcellentPoints > 0) {
+      excellentPointsUsed = Math.min(remaining, availableExcellentPoints);
+      remaining -= excellentPointsUsed;
     }
   } else {
-    // 기본포인트만 사용
+    // 기본포인트만 사용 (기존 로직 유지)
     basePointsUsed = Math.min(totalAmount, availableBasePoints);
     selfPointsUsed = 0;
+    excellentPointsUsed = 0;
   }
   
   return {
     selfPointsUsed,
     basePointsUsed,
-    totalPointsUsed: selfPointsUsed + basePointsUsed,
-    isInsufficientPoints: (selfPointsUsed + basePointsUsed) < totalAmount
+    excellentPointsUsed,
+    totalPointsUsed: selfPointsUsed + basePointsUsed + excellentPointsUsed,
+    isInsufficientPoints: (selfPointsUsed + basePointsUsed + excellentPointsUsed) < totalAmount
   };
 }
 
@@ -50,8 +65,17 @@ function calculatePointsDistribution(totalAmount, availableSelfPoints, available
  */
 function getGamePointUsage(gameId) {
   return new Promise((resolve, reject) => {
-    // 1. 해당 게임의 기본/자부담 포인트 조회
-    const gameQuery = 'SELECT base_points, self_points FROM games WHERE id = ?';
+    // 1. 해당 게임의 기본/자부담/우수 포인트 조회
+    const gameQuery = `
+      SELECT 
+        base_points, 
+        self_points,
+        excellent_1st_points,
+        excellent_2nd_points,
+        excellent_3rd_points
+      FROM games 
+      WHERE id = ?
+    `;
     
     db.get(gameQuery, [gameId], (err, game) => {
       if (err) {
@@ -60,7 +84,7 @@ function getGamePointUsage(gameId) {
       }
       
       if (!game) {
-        resolve({ totalUsed: 0, selfUsed: 0, baseUsed: 0 });
+        resolve({ totalUsed: 0, selfUsed: 0, baseUsed: 0, excellentUsed: 0 });
         return;
       }
       
@@ -74,6 +98,7 @@ function getGamePointUsage(gameId) {
           AND selected_vendor IS NOT NULL 
           AND contract_amount IS NOT NULL 
           AND contract_amount != ''
+          AND (status = '최종계약체결' OR status = '계약종료(정산)')
       `;
       
       db.all(contractsQuery, [gameId], (err, contracts) => {
@@ -105,9 +130,13 @@ function getGamePointUsage(gameId) {
         // 사용 가능한 포인트
         const availableSelfPoints = game.self_points || 0;
         const availableBasePoints = game.base_points || 0;
+        const availableExcellentPoints = (game.excellent_1st_points || 0) + 
+                                       (game.excellent_2nd_points || 0) + 
+                                       (game.excellent_3rd_points || 0);
         
         let totalSelfUsed = 0;
         let totalBaseUsed = 0;
+        let totalExcellentUsed = 0;
         
         // 1. 자부담 우선 사용 계약들 처리
         if (totalSelfFirstAmount > 0) {
@@ -115,33 +144,39 @@ function getGamePointUsage(gameId) {
             totalSelfFirstAmount,
             availableSelfPoints,
             availableBasePoints,
+            availableExcellentPoints,
             true // 자부담 우선 사용
           );
           
           totalSelfUsed += selfFirstDistribution.selfPointsUsed;
           totalBaseUsed += selfFirstDistribution.basePointsUsed;
+          totalExcellentUsed += selfFirstDistribution.excellentPointsUsed;
         }
         
         // 2. 기본만 사용 계약들 처리 (남은 포인트로)
         if (totalBaseOnlyAmount > 0) {
           const remainingSelfPoints = availableSelfPoints - totalSelfUsed;
           const remainingBasePoints = availableBasePoints - totalBaseUsed;
+          const remainingExcellentPoints = availableExcellentPoints - totalExcellentUsed;
           
           const baseOnlyDistribution = calculatePointsDistribution(
             totalBaseOnlyAmount,
             remainingSelfPoints,
             remainingBasePoints,
+            remainingExcellentPoints,
             false // 기본만 사용
           );
           
           totalSelfUsed += baseOnlyDistribution.selfPointsUsed;
           totalBaseUsed += baseOnlyDistribution.basePointsUsed;
+          totalExcellentUsed += baseOnlyDistribution.excellentPointsUsed;
         }
         
         resolve({
-          totalUsed: totalSelfUsed + totalBaseUsed,
+          totalUsed: totalSelfUsed + totalBaseUsed + totalExcellentUsed,
           selfUsed: totalSelfUsed,
-          baseUsed: totalBaseUsed
+          baseUsed: totalBaseUsed,
+          excellentUsed: totalExcellentUsed
         });
       });
     });
@@ -155,7 +190,11 @@ function getAllGamesPointUsage() {
   return new Promise((resolve, reject) => {
     // 모든 게임 조회
     const gamesQuery = `
-      SELECT id, game_name, company_name, base_points, self_points, total_points
+      SELECT 
+        id, game_name, company_name, 
+        base_points, self_points, total_points,
+        excellent_1st_points, excellent_2nd_points, excellent_3rd_points,
+        is_excellent_1st, is_excellent_2nd, is_excellent_3rd
       FROM games
     `;
     
@@ -171,22 +210,36 @@ function getAllGamesPointUsage() {
         for (const game of games) {
           const usage = await getGamePointUsage(game.id);
           
+          const excellentPoints = (game.excellent_1st_points || 0) + 
+                                 (game.excellent_2nd_points || 0) + 
+                                 (game.excellent_3rd_points || 0);
+          const actualTotalPoints = (game.base_points || 0) + (game.self_points || 0) + excellentPoints;
+          
           result.push({
             id: game.id,
             gameName: game.game_name,
             companyName: game.company_name,
             basePoints: game.base_points || 0,
             selfPoints: game.self_points || 0,
-            totalPoints: game.total_points || 0,
+            excellentPoints: excellentPoints,
+            excellent1stPoints: game.excellent_1st_points || 0,
+            excellent2ndPoints: game.excellent_2nd_points || 0,
+            excellent3rdPoints: game.excellent_3rd_points || 0,
+            totalPoints: actualTotalPoints,
+            isExcellent1st: game.is_excellent_1st || false,
+            isExcellent2nd: game.is_excellent_2nd || false,
+            isExcellent3rd: game.is_excellent_3rd || false,
             pointsUsed: {
               total: usage.totalUsed,
               self: usage.selfUsed,
-              base: usage.baseUsed
+              base: usage.baseUsed,
+              excellent: usage.excellentUsed
             },
             remainingPoints: {
-              total: (game.total_points || 0) - usage.totalUsed,
+              total: actualTotalPoints - usage.totalUsed,
               self: (game.self_points || 0) - usage.selfUsed,
-              base: (game.base_points || 0) - usage.baseUsed
+              base: (game.base_points || 0) - usage.baseUsed,
+              excellent: excellentPoints - usage.excellentUsed
             }
           });
         }
@@ -271,7 +324,7 @@ function getGamePointUsageByServiceCategory(gameId) {
         AND selected_vendor IS NOT NULL 
         AND contract_amount IS NOT NULL 
         AND contract_amount != ''
-        AND status = '최종계약체결'
+        AND (status = '최종계약체결' OR status = '계약종료(정산)')
     `;
     
     db.all(contractsQuery, [gameId], (err, contracts) => {
@@ -332,7 +385,11 @@ function getGamePointUsageByServiceCategory(gameId) {
 function getAllGamesPointUsageWithCategories() {
   return new Promise((resolve, reject) => {
     const gamesQuery = `
-      SELECT id, game_name, company_name, base_points, self_points, total_points
+      SELECT 
+        id, game_name, company_name, 
+        base_points, self_points, total_points,
+        excellent_1st_points, excellent_2nd_points, excellent_3rd_points,
+        is_excellent_1st, is_excellent_2nd, is_excellent_3rd
       FROM games
     `;
     
@@ -349,22 +406,36 @@ function getAllGamesPointUsageWithCategories() {
           const usage = await getGamePointUsage(game.id);
           const categoryUsage = await getGamePointUsageByServiceCategory(game.id);
           
+          const excellentPoints = (game.excellent_1st_points || 0) + 
+                                 (game.excellent_2nd_points || 0) + 
+                                 (game.excellent_3rd_points || 0);
+          const actualTotalPoints = (game.base_points || 0) + (game.self_points || 0) + excellentPoints;
+          
           result.push({
             id: game.id,
             gameName: game.game_name,
             companyName: game.company_name,
             basePoints: game.base_points || 0,
             selfPoints: game.self_points || 0,
-            totalPoints: game.total_points || 0,
+            excellentPoints: excellentPoints,
+            excellent1stPoints: game.excellent_1st_points || 0,
+            excellent2ndPoints: game.excellent_2nd_points || 0,
+            excellent3rdPoints: game.excellent_3rd_points || 0,
+            totalPoints: actualTotalPoints,
+            isExcellent1st: game.is_excellent_1st || false,
+            isExcellent2nd: game.is_excellent_2nd || false,
+            isExcellent3rd: game.is_excellent_3rd || false,
             pointsUsed: {
               total: usage.totalUsed,
               self: usage.selfUsed,
-              base: usage.baseUsed
+              base: usage.baseUsed,
+              excellent: usage.excellentUsed
             },
             remainingPoints: {
-              total: (game.total_points || 0) - usage.totalUsed,
+              total: actualTotalPoints - usage.totalUsed,
               self: (game.self_points || 0) - usage.selfUsed,
-              base: (game.base_points || 0) - usage.baseUsed
+              base: (game.base_points || 0) - usage.baseUsed,
+              excellent: excellentPoints - usage.excellentUsed
             },
             categoryUsage
           });
@@ -384,7 +455,13 @@ function getAllGamesPointUsageWithCategories() {
 function calculateAndSavePerContractUsage(gameId) {
   return new Promise((resolve, reject) => {
     // 1. 게임 정보 조회 (사용 가능 포인트)
-    db.get('SELECT id, base_points, self_points FROM games WHERE id = ?', [gameId], (err, game) => {
+    db.get(`
+      SELECT 
+        id, base_points, self_points,
+        excellent_1st_points, excellent_2nd_points, excellent_3rd_points
+      FROM games 
+      WHERE id = ?
+    `, [gameId], (err, game) => {
       if (err || !game) {
         return reject(err || new Error(`Game not found: ${gameId}`));
       }
@@ -397,12 +474,16 @@ function calculateAndSavePerContractUsage(gameId) {
           AND selected_vendor IS NOT NULL 
           AND contract_amount IS NOT NULL 
           AND contract_amount != ''
+          AND (status = '최종계약체결' OR status = '계약종료(정산)')
       `;
       db.all(contractsQuery, [gameId], (err, contracts) => {
         if (err) return reject(err);
 
         let availableBase = game.base_points || 0;
         let availableSelf = game.self_points || 0;
+        let availableExcellent = (game.excellent_1st_points || 0) + 
+                               (game.excellent_2nd_points || 0) + 
+                               (game.excellent_3rd_points || 0);
 
         const updates = [];
         const selfFirstContracts = contracts.filter(c => c.use_self_points === 1);
@@ -454,6 +535,79 @@ function calculateAndSavePerContractUsage(gameId) {
   });
 }
 
+/**
+ * 우수게임사 토글 함수
+ */
+function toggleExcellentCompany(gameId, phase, isExcellent) {
+  return new Promise((resolve, reject) => {
+    const phaseColumn = `is_excellent_${phase}`;
+    const pointsColumn = `excellent_${phase}_points`;
+    const excellentPoints = isExcellent ? 100000000 : 0; // 1억 포인트
+    
+    // 유효한 phase 검증
+    if (!['1st', '2nd', '3rd'].includes(phase)) {
+      reject(new Error('Invalid phase. Must be 1st, 2nd, or 3rd.'));
+      return;
+    }
+    
+    const updateQuery = `
+      UPDATE games 
+      SET ${phaseColumn} = ?, 
+          ${pointsColumn} = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+    
+    db.run(updateQuery, [isExcellent ? 1 : 0, excellentPoints, gameId], function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ 
+          success: true, 
+          gameId: gameId,
+          phase: phase,
+          isExcellent: isExcellent,
+          points: excellentPoints
+        });
+      }
+    });
+  });
+}
+
+/**
+ * 게임사의 우수게임사 상태 조회
+ */
+function getExcellentCompanyStatus(gameId) {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT 
+        is_excellent_1st,
+        is_excellent_2nd,
+        is_excellent_3rd,
+        excellent_1st_points,
+        excellent_2nd_points,
+        excellent_3rd_points
+      FROM games 
+      WHERE id = ?
+    `;
+    
+    db.get(query, [gameId], (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row || {
+          is_excellent_1st: false,
+          is_excellent_2nd: false,
+          is_excellent_3rd: false,
+          excellent_1st_points: 0,
+          excellent_2nd_points: 0,
+          excellent_3rd_points: 0
+        });
+      }
+    });
+  });
+}
+
 module.exports = {
   parseContractAmount,
   calculatePointsDistribution,
@@ -464,5 +618,7 @@ module.exports = {
   toggleSelfPointsUsage,
   assignPointsToContract,
   unassignPointsFromContract,
-  calculateAndSavePerContractUsage
+  calculateAndSavePerContractUsage,
+  toggleExcellentCompany,
+  getExcellentCompanyStatus
 }; 

@@ -71,6 +71,27 @@ async function changePassword(userId, newPassword) {
   });
 }
 
+// 비밀번호 초기화 (1234로 설정)
+async function resetPassword(userId) {
+  return new Promise((resolve, reject) => {
+    const query = `UPDATE managers SET password = '1234' WHERE id = ?`;
+    
+    db.run(query, [userId], function(err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      if (this.changes === 0) {
+        reject(new Error('사용자를 찾을 수 없습니다.'));
+        return;
+      }
+      
+      resolve({ success: true, message: '비밀번호가 초기화되었습니다.' });
+    });
+  });
+}
+
 // 특정 이메일 사용자의 권한 설정
 async function setUserRole(email, role) {
   return new Promise((resolve, reject) => {
@@ -108,6 +129,7 @@ async function initializeAdminUser() {
 module.exports = {
   authenticateUser,
   changePassword,
+  resetPassword,
   setUserRole,
   initializeAdminUser
 }; 

@@ -24,6 +24,11 @@
     <strong>담당자 권한이 변경되었습니다.</strong>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
+<% } else if (typeof query !== 'undefined' && query.password_reset) { %>
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>담당자 비밀번호가 초기화되었습니다.</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
 <% } %>
 
 <div class="row mb-4">
@@ -179,14 +184,23 @@
                     </td>
                     <% if (user && user.role === '어드민') { %>
                     <td>
-                      <button 
-                        class="btn btn-sm btn-outline-secondary change-role" 
-                        data-manager-id="<%= manager.id %>"
-                        data-manager-name="<%= manager.name %>"
-                        data-manager-role="<%= manager.role || '담당자' %>"
-                      >
-                        권한 변경
-                      </button>
+                      <div class="btn-group btn-group-sm">
+                        <button 
+                          class="btn btn-outline-secondary change-role" 
+                          data-manager-id="<%= manager.id %>"
+                          data-manager-name="<%= manager.name %>"
+                          data-manager-role="<%= manager.role || '담당자' %>"
+                        >
+                          권한 변경
+                        </button>
+                        <button 
+                          class="btn btn-outline-warning reset-password" 
+                          data-manager-id="<%= manager.id %>"
+                          data-manager-name="<%= manager.name %>"
+                        >
+                          비밀번호 초기화
+                        </button>
+                      </div>
                     </td>
                     <% } %>
                   </tr>
@@ -326,6 +340,37 @@
   </div>
 </div>
 
+<!-- 비밀번호 초기화 모달 -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="resetPasswordModalTitle">비밀번호 초기화</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="resetPasswordForm" action="/managers/reset-password" method="POST">
+          <input type="hidden" id="manager_id_reset" name="manager_id">
+          
+          <div class="mb-3">
+            <label for="manager_name_reset" class="form-label">담당자</label>
+            <input type="text" class="form-control" id="manager_name_reset" readonly>
+          </div>
+          
+          <div class="alert alert-warning">
+            <strong>주의!</strong> 비밀번호가 초기값(1234)으로 재설정됩니다.<br>
+            담당자는 다음 로그인 시 비밀번호를 변경해야 합니다.
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-warning">비밀번호 초기화</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 접속 기록 모달 -->
 <div class="modal fade" id="accessLogModal" tabindex="-1" aria-labelledby="accessLogModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -453,6 +498,22 @@
         }
         
         roleModal.show();
+      });
+    });
+    
+    // 비밀번호 초기화 버튼 클릭 이벤트
+    const resetPasswordButtons = document.querySelectorAll('.reset-password');
+    const resetPasswordModal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    
+    resetPasswordButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const managerId = this.getAttribute('data-manager-id');
+        const managerName = this.getAttribute('data-manager-name');
+        
+        document.getElementById('manager_id_reset').value = managerId;
+        document.getElementById('manager_name_reset').value = managerName;
+        
+        resetPasswordModal.show();
       });
     });
 
