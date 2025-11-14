@@ -199,6 +199,64 @@ function addExcellentPointsColumns() {
   });
 }
 
+// contracts 테이블에 manager_id 컬럼 추가 함수
+function addManagerIdToContracts() {
+  db.all("PRAGMA table_info(contracts)", (err, columns) => {
+    if (err) {
+      console.error('계약 테이블 컬럼 정보 조회 오류:', err.message);
+      return;
+    }
+    
+    const columnNames = columns.map(col => col.name);
+    
+    if (!columnNames.includes('manager_id')) {
+      db.run('ALTER TABLE contracts ADD COLUMN manager_id INTEGER', (alterErr) => {
+        if (alterErr) {
+          console.error('manager_id 컬럼 추가 오류:', alterErr.message);
+        } else {
+          console.log('contracts 테이블에 manager_id 컬럼이 추가되었습니다.');
+          // 기존 계약 데이터에 담당자 매핑
+          updateContractManagers();
+        }
+      });
+    }
+    
+    // memo 컬럼 추가
+    if (!columnNames.includes('memo')) {
+      db.run('ALTER TABLE contracts ADD COLUMN memo TEXT', (alterErr) => {
+        if (alterErr) {
+          console.error('memo 컬럼 추가 오류:', alterErr.message);
+        } else {
+          console.log('contracts 테이블에 memo 컬럼이 추가되었습니다.');
+        }
+      });
+    }
+  });
+}
+
+// 기존 계약 데이터에 담당자 매핑 업데이트
+function updateContractManagers() {
+  // company_managers 테이블을 통해 게임사별 첫 번째 담당자를 계약에 매핑
+  const query = `
+    UPDATE contracts
+    SET manager_id = (
+      SELECT cm.manager_id 
+      FROM company_managers cm
+      WHERE cm.company_name = contracts.company_name
+      LIMIT 1
+    )
+    WHERE manager_id IS NULL
+  `;
+  
+  db.run(query, (err) => {
+    if (err) {
+      console.error('계약 담당자 매핑 업데이트 오류:', err.message);
+    } else {
+      console.log('기존 계약 데이터에 담당자가 매핑되었습니다.');
+    }
+  });
+}
+
 // 기타 테이블 생성 함수
 function createOtherTables(callback) {
   let pendingTables = 6; // 생성할 테이블 수 (5에서 6으로 변경)
@@ -271,6 +329,8 @@ function createOtherTables(callback) {
       console.error('계약 정보 테이블 생성 오류:', err.message);
     } else {
       console.log('계약 정보 테이블이 준비되었습니다.');
+      // manager_id 컬럼 추가
+      addManagerIdToContracts();
     }
     tableCreated();
   });

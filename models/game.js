@@ -375,6 +375,132 @@ function getCompanyContractStatus() {
   });
 }
 
+// 전체 계약 정보 가져오기 (필터링 및 정렬 지원)
+function getAllContracts(filters = {}, sortBy = 'selection_deadline', sortOrder = 'DESC') {
+  return new Promise((resolve, reject) => {
+    let query = `
+      SELECT 
+        c.*,
+        m.name as manager_name,
+        m.email as manager_email
+      FROM contracts c
+      LEFT JOIN managers m ON c.manager_id = m.id
+      WHERE 1=1
+    `;
+    const params = [];
+    
+    // 필터링 조건 추가
+    if (filters.companyName) {
+      query += ' AND c.company_name LIKE ?';
+      params.push(`%${filters.companyName}%`);
+    }
+    
+    if (filters.status) {
+      query += ' AND c.status = ?';
+      params.push(filters.status);
+    }
+    
+    if (filters.workStatus) {
+      query += ' AND c.work_status = ?';
+      params.push(filters.workStatus);
+    }
+    
+    if (filters.serviceCategory) {
+      query += ' AND c.service_category = ?';
+      params.push(filters.serviceCategory);
+    }
+    
+    if (filters.selectedVendor) {
+      query += ' AND c.selected_vendor LIKE ?';
+      params.push(`%${filters.selectedVendor}%`);
+    }
+    
+    if (filters.dateFrom) {
+      query += ' AND c.selection_deadline >= ?';
+      params.push(filters.dateFrom);
+    }
+    
+    if (filters.dateTo) {
+      query += ' AND c.selection_deadline <= ?';
+      params.push(filters.dateTo);
+    }
+    
+    // 담당PM 필터 추가
+    if (filters.managerId) {
+      query += ' AND c.manager_id = ?';
+      params.push(filters.managerId);
+    }
+    
+    // 정렬 추가
+    const allowedSortFields = [
+      'contract_id', 
+      'company_name', 
+      'manager_name',
+      'service_category',
+      'service_detail',
+      'service_request',
+      'work_start_date',
+      'work_end_date',
+      'status', 
+      'selected_vendor',
+      'contract_amount',
+      'work_status', 
+      'created_at'
+    ];
+    
+    let sortField = 'c.work_end_date';
+    if (allowedSortFields.includes(sortBy)) {
+      if (sortBy === 'manager_name') {
+        sortField = 'm.name';
+      } else {
+        sortField = 'c.' + sortBy;
+      }
+    }
+    
+    const order = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    
+    query += ` ORDER BY ${sortField} ${order}`;
+    
+    db.all(query, params, (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows || []);
+    });
+  });
+}
+
+// 모든 게임사 이름 가져오기
+function getAllCompanyNames() {
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT DISTINCT company_name FROM games ORDER BY company_name';
+    
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows.map(row => row.company_name));
+    });
+  });
+}
+
+// 모든 담당자 목록 가져오기
+function getAllManagers() {
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT id, name, email FROM managers ORDER BY name';
+    
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows || []);
+    });
+  });
+}
+
 // 구글 스프레드시트에서 데이터 가져와서 DB에 저장
 async function syncWithGoogleSheet() {
   try {
@@ -417,6 +543,9 @@ async function syncWithGoogleSheet() {
     
     // 모든 계약 정보 추가/업데이트 작업 완료 대기
     await Promise.all(contractPromises);
+    
+    // 담당자가 지정된 게임사의 계약에 자동 매핑
+    await updateContractManagersAfterSync();
     
     // 마지막 동기화 시간 업데이트
     const currentTime = new Date().toISOString();
@@ -469,6 +598,38 @@ async function syncWithGoogleSheet() {
     console.error('데이터 동기화 오류:', error);
     throw error;
   }
+}
+
+// 동기화 후 담당자 자동 매핑 (담당자가 지정된 게임사만)
+function updateContractManagersAfterSync() {
+  return new Promise((resolve, reject) => {
+    const query = `
+      UPDATE contracts
+      SET manager_id = (
+        SELECT cm.manager_id 
+        FROM company_managers cm
+        WHERE cm.company_name = contracts.company_name
+        LIMIT 1
+      )
+      WHERE manager_id IS NULL
+        AND EXISTS (
+          SELECT 1 
+          FROM company_managers cm 
+          WHERE cm.company_name = contracts.company_name
+        )
+    `;
+    
+    db.run(query, function(err) {
+      if (err) {
+        console.error('계약 담당자 자동 매핑 오류:', err.message);
+        reject(err);
+        return;
+      }
+      
+      console.log(`✅ ${this.changes}건의 계약에 담당PM이 자동 매핑되었습니다.`);
+      resolve({ updated: this.changes });
+    });
+  });
 }
 
 // 마지막 동기화 시간 조회
@@ -563,10 +724,10 @@ async function updatePointUsageDB() {
     // 게임사 목록을 IN 절에 사용하기 위한 플레이스홀더와 값 생성
     const placeholders = gameCompanies.map(() => '?').join(',');
     
-    // 최종계약체결된 계약 중 게임 테이블에 등록된 게임사의 계약만 가져오기
+    // 최종계약체결 및 계약종료(정산) 계약 중 게임 테이블에 등록된 게임사의 계약만 가져오기
     const query = `
       SELECT * FROM contracts 
-      WHERE status = '최종계약체결' 
+      WHERE status IN ('최종계약체결', '계약종료(정산)') 
       AND company_name IN (${placeholders})
       ORDER BY company_name, selection_deadline
     `;
@@ -574,13 +735,13 @@ async function updatePointUsageDB() {
     return new Promise((resolve, reject) => {
       db.all(query, gameCompanies, async (err, contracts) => {
         if (err) {
-          console.error('최종계약체결 계약 조회 오류:', err);
+          console.error('계약 조회 오류:', err);
           reject(err);
           return;
         }
         
         try {
-          console.log(`총 ${contracts.length}개의 최종계약체결 계약 조회됨 (등록된 게임사만)`);
+          console.log(`총 ${contracts.length}개의 계약 조회됨 (최종계약체결 + 계약종료(정산), 등록된 게임사만)`);
           
           // 각 계약의 pointUsageDBCode 확인 (DB에 저장된 계약코드)
           const contractsWithCodes = await Promise.all(contracts.map(async (contract) => {
@@ -705,6 +866,9 @@ module.exports = {
   saveContract,
   getContractsByCompany,
   getCompanyContractStatus,
+  getAllContracts,
+  getAllCompanyNames,
+  getAllManagers,
   syncWithGoogleSheet,
   getLastSyncTime,
   getNextSyncInfo,

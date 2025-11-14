@@ -30,6 +30,14 @@
             </a>
           </li>
           <% } %>
+          
+          <% if (user.role === '어드민' || user.role === '매니저' || user.role === '담당자') { %>
+          <li class="nav-item">
+            <a class="nav-link <%= title === '계약 관리' ? 'active' : '' %>" href="/contracts">
+              <i class="bi bi-file-text"></i> 계약 관리
+            </a>
+          </li>
+          <% } %>
 
           <% if (user.role === '어드민') { %>
           <li class="nav-item">

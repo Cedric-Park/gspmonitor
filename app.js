@@ -128,6 +128,7 @@ const notificationRouter = require('./routes/notifications');
 const managerRouter = require('./routes/managers');
 const authRouter = require('./routes/auth');
 const pointRouter = require('./routes/points');
+const contractRouter = require('./routes/contracts');
 
 app.use('/auth', authRouter);
 app.use('/', ensureAuthenticated, indexRouter);
@@ -135,6 +136,7 @@ app.use('/games', ensureAuthenticated, checkRole(['어드민', '매니저', '담
 app.use('/notifications', ensureAuthenticated, checkRole(['어드민']), notificationRouter);
 app.use('/managers', ensureAuthenticated, checkRole(['어드민']), managerRouter);
 app.use('/points', ensureAuthenticated, checkRole(['어드민', '매니저']), pointRouter);
+app.use('/contracts', ensureAuthenticated, checkRole(['어드민', '매니저', '담당자']), contractRouter);
 
 // 데이터 동기화 경로 보호
 app.use('/sync', ensureAuthenticated, checkRole(['어드민']), indexRouter);
