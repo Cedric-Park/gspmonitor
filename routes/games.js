@@ -4,6 +4,32 @@ const gameModel = require('../models/game');
 const managerModel = require('../models/manager');
 const statisticsModel = require('../models/statistics');
 
+// 게임 ID로 게임 정보 조회 API (JSON)
+router.get('/api/:gameId', async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const db = require('../db/database').getDatabase();
+    
+    const query = `SELECT * FROM games WHERE id = ?`;
+    
+    db.get(query, [gameId], (err, game) => {
+      if (err) {
+        console.error('게임 조회 오류:', err);
+        return res.json({ success: false, message: err.message });
+      }
+      
+      if (!game) {
+        return res.json({ success: false, message: '게임을 찾을 수 없습니다.' });
+      }
+      
+      res.json({ success: true, game });
+    });
+  } catch (error) {
+    console.error('게임 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // 게임사별 게임 목록 가져오기
 router.get('/company/:companyName', async (req, res) => {
   try {

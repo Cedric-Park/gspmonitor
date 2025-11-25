@@ -154,5 +154,29 @@ function parseContractAmount(amountStr) {
   return isNaN(amount) ? 0 : amount;
 }
 
+// 계약 포인트 배분 업데이트 API
+router.post('/:contractId/update-points', checkAdminManagerRole, async (req, res) => {
+  try {
+    const contractId = req.params.contractId;
+    const { base_points_used } = req.body;
+    
+    const db = require('../db/database').getDatabase();
+    
+    const query = `UPDATE contracts SET base_points_used = ? WHERE id = ?`;
+    
+    db.run(query, [base_points_used, contractId], function(err) {
+      if (err) {
+        console.error('포인트 배분 업데이트 오류:', err);
+        return res.json({ success: false, message: err.message });
+      }
+      
+      res.json({ success: true, message: '포인트 배분이 업데이트되었습니다.' });
+    });
+  } catch (error) {
+    console.error('포인트 배분 업데이트 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
 

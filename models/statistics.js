@@ -148,9 +148,9 @@ async function createGamePerformanceTable() {
         downloads_domestic INTEGER DEFAULT 0,
         downloads_global INTEGER DEFAULT 0,
         downloads_target INTEGER DEFAULT 0,
-        revenue_domestic INTEGER DEFAULT 0,
-        revenue_global INTEGER DEFAULT 0,
-        revenue_target INTEGER DEFAULT 0,
+        revenue_domestic REAL DEFAULT 0,
+        revenue_global REAL DEFAULT 0,
+        revenue_target REAL DEFAULT 0,
         dau_domestic INTEGER DEFAULT 0,
         dau_global INTEGER DEFAULT 0,
         dau_target INTEGER DEFAULT 0,
@@ -240,7 +240,7 @@ async function fetchGamePerformanceData() {
         continue;
       }
       
-      // 필요한 데이터 추출
+      // 필요한 데이터 추출 (매출은 소숫점 포함)
       const data = {
         date: values[0]?.trim() || '',
         category: values[1]?.trim() || '',
@@ -249,9 +249,9 @@ async function fetchGamePerformanceData() {
         downloads_domestic: parseInt((values[4] || '0').replace(/,/g, '')),
         downloads_global: parseInt((values[5] || '0').replace(/,/g, '')),
         downloads_target: parseInt((values[6] || '0').replace(/,/g, '')),
-        revenue_domestic: parseInt((values[7] || '0').replace(/,/g, '')),
-        revenue_global: parseInt((values[8] || '0').replace(/,/g, '')),
-        revenue_target: parseInt((values[9] || '0').replace(/,/g, '')),
+        revenue_domestic: parseFloat((values[7] || '0').replace(/,/g, '')) || 0,
+        revenue_global: parseFloat((values[8] || '0').replace(/,/g, '')) || 0,
+        revenue_target: parseFloat((values[9] || '0').replace(/,/g, '')) || 0,
         dau_domestic: parseInt((values[10] || '0').replace(/,/g, '')),
         dau_global: parseInt((values[11] || '0').replace(/,/g, '')),
         dau_target: parseInt((values[12] || '0').replace(/,/g, '')),

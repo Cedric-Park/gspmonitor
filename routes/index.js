@@ -171,16 +171,28 @@ router.get('/statistics', async (req, res, next) => {
       }
     }
     
+    // 기본 날짜 범위 설정 (3개월)
+    const today = new Date();
+    const defaultEndDate = today.toISOString().split('T')[0];
+    
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(today.getMonth() - 3);
+    const defaultStartDate = threeMonthsAgo.toISOString().split('T')[0];
+    
+    // 실제 사용할 날짜 (쿼리 파라미터가 없으면 기본값 사용)
+    const effectiveStartDate = startDate || defaultStartDate;
+    const effectiveEndDate = endDate || defaultEndDate;
+    
     // 게임사별 포인트 사용률 통계 가져오기
     const companyUsageStats = await statisticsModel.getCompanyUsageStatistics();
     
     // 서비스 부문별 포인트 사용 통계 가져오기
     const serviceCategoryStats = await statisticsModel.getServiceCategoryStatistics();
     
-    // 게임사별 누적 매출 통계 가져오기 (날짜 범위 적용)
+    // 게임사별 누적 매출 통계 가져오기 (항상 날짜 범위 적용)
     const companyRevenueStats = dateRangeValid 
-      ? await statisticsModel.getCompanyRevenueStatistics(startDate, endDate)
-      : await statisticsModel.getCompanyRevenueStatistics();
+      ? await statisticsModel.getCompanyRevenueStatistics(effectiveStartDate, effectiveEndDate)
+      : await statisticsModel.getCompanyRevenueStatistics(effectiveStartDate, effectiveEndDate);
     
     // 총 누적 매출 계산
     const totalRevenue = companyRevenueStats.reduce((sum, company) => sum + company.total_revenue, 0);
@@ -190,15 +202,6 @@ router.get('/statistics', async (req, res, next) => {
     
     // PDF 내보내기를 위한 플래그 추가
     const exportToPdf = req.query.export === 'true';
-    
-    // 현재 날짜를 기본값으로 설정 (필터 초기값용)
-    const today = new Date();
-    const defaultEndDate = today.toISOString().split('T')[0];
-    
-    // 3개월 전 날짜를 기본 시작일로 설정
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(today.getMonth() - 3);
-    const defaultStartDate = threeMonthsAgo.toISOString().split('T')[0];
     
     res.render('statistics', {
       title: '포인트 통계',

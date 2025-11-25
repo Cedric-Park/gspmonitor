@@ -201,7 +201,8 @@
                       업무상태
                       <i class="bi bi-arrow-down-up sort-icon"></i>
                     </th>
-                    <th style="width: 15%;">메모</th>
+                    <th style="width: 13%;">메모</th>
+                    <th style="width: 5%;" class="text-center">관리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -268,6 +269,23 @@
                                value="<%= contract.memo || '' %>" 
                                placeholder="메모 입력..." 
                                style="display: none;">
+                      </td>
+                      <td class="text-center">
+                        <% if (contract.status === '최종계약체결' || contract.status === '계약종료(정산)') { %>
+                          <button class="btn btn-sm btn-outline-primary edit-points-btn" 
+                                  data-contract-id="<%= contract.id %>"
+                                  data-contract-num="<%= contract.contract_id %>"
+                                  data-company-name="<%= contract.company_name %>"
+                                  data-service-category="<%= contract.service_category %>"
+                                  data-contract-amount="<%= contract.contract_amount %>"
+                                  data-base-points-used="<%= contract.base_points_used || 0 %>"
+                                  data-assigned-game-id="<%= contract.assigned_game_id %>"
+                                  title="포인트 배분 수정">
+                            <i class="bi bi-pencil-square"></i>
+                          </button>
+                        <% } else { %>
+                          -
+                        <% } %>
                       </td>
                     </tr>
                   <% }); %>
@@ -537,5 +555,186 @@
       cell.classList.remove('editing');
     });
   }
+
+  // 포인트 배분 수정 버튼 클릭 이벤트
+  document.querySelectorAll('.edit-points-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation(); // 행 클릭 이벤트 방지
+      
+      const contractId = this.getAttribute('data-contract-id');
+      const contractNum = this.getAttribute('data-contract-num');
+      const companyName = this.getAttribute('data-company-name');
+      const serviceCategory = this.getAttribute('data-service-category');
+      const contractAmount = this.getAttribute('data-contract-amount');
+      const basePointsUsed = parseInt(this.getAttribute('data-base-points-used')) || 0;
+      const assignedGameId = this.getAttribute('data-assigned-game-id');
+      
+      // 모달에 데이터 채우기
+      document.getElementById('editPointsContractId').value = contractId;
+      document.getElementById('editPointsContractNum').textContent = contractNum;
+      document.getElementById('editPointsCompany').textContent = companyName;
+      document.getElementById('editPointsCategory').textContent = serviceCategory;
+      document.getElementById('editPointsTotal').textContent = contractAmount;
+      
+      // 계약 금액에서 숫자만 추출
+      const amountValue = parseInt(contractAmount.replace(/[^0-9]/g, '')) || 0;
+      
+      // 자동 배분 로직을 위해 게임 정보 가져오기
+      if (assignedGameId) {
+        fetch(`/api/games/${assignedGameId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.game) {
+              const game = data.game;
+              const hasExcellentPoints = (game.excellent_1st_points || 0) > 0 || 
+                                         game.is_excellent_2nd || 
+                                         game.is_excellent_3rd;
+              
+              if (hasExcellentPoints && basePointsUsed === 0) {
+                // 자동 비례 배분
+                const gameBasePoints = (game.base_points || 0) + (game.self_points || 0);
+                const gameTotalPoints = game.total_points || 0;
+                const gameExcellentPoints = gameTotalPoints - gameBasePoints;
+                
+                if (gameTotalPoints > 0) {
+                  const baseRatio = gameBasePoints / gameTotalPoints;
+                  const autoBasePoints = Math.round(amountValue * baseRatio);
+                  document.getElementById('editPointsBase').value = autoBasePoints;
+                  document.getElementById('editPointsExcellent').value = amountValue - autoBasePoints;
+                } else {
+                  document.getElementById('editPointsBase').value = amountValue;
+                  document.getElementById('editPointsExcellent').value = 0;
+                }
+              } else {
+                // 기존 값 사용
+                document.getElementById('editPointsBase').value = basePointsUsed;
+                document.getElementById('editPointsExcellent').value = amountValue - basePointsUsed;
+              }
+            } else {
+              // 게임 정보 없으면 전체를 기본 포인트로
+              document.getElementById('editPointsBase').value = amountValue;
+              document.getElementById('editPointsExcellent').value = 0;
+            }
+          })
+          .catch(err => {
+            console.error('게임 정보 조회 오류:', err);
+            document.getElementById('editPointsBase').value = basePointsUsed || amountValue;
+            document.getElementById('editPointsExcellent').value = amountValue - (basePointsUsed || amountValue);
+          });
+      } else {
+        // 게임 배정 안됨 - 전체를 기본 포인트로
+        document.getElementById('editPointsBase').value = basePointsUsed || amountValue;
+        document.getElementById('editPointsExcellent').value = amountValue - (basePointsUsed || amountValue);
+      }
+      
+      // 모달 열기
+      const modal = new bootstrap.Modal(document.getElementById('editPointsModal'));
+      modal.show();
+    });
+  });
+
+  // 기본 포인트 입력 시 우수 포인트 자동 계산
+  document.getElementById('editPointsBase').addEventListener('input', function() {
+    const contractAmount = document.getElementById('editPointsTotal').textContent;
+    const amountValue = parseInt(contractAmount.replace(/[^0-9]/g, '')) || 0;
+    const basePoints = parseInt(this.value) || 0;
+    const excellentPoints = Math.max(0, amountValue - basePoints);
+    document.getElementById('editPointsExcellent').value = excellentPoints;
+  });
+
+  // 포인트 배분 저장
+  document.getElementById('savePointsBtn').addEventListener('click', function() {
+    const contractId = document.getElementById('editPointsContractId').value;
+    const basePoints = parseInt(document.getElementById('editPointsBase').value) || 0;
+    const excellentPoints = parseInt(document.getElementById('editPointsExcellent').value) || 0;
+    
+    fetch(`/contracts/${contractId}/update-points`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        base_points_used: basePoints
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('포인트 배분이 저장되었습니다.');
+        location.reload();
+      } else {
+        alert('저장 실패: ' + data.message);
+      }
+    })
+    .catch(err => {
+      console.error('저장 오류:', err);
+      alert('저장 중 오류가 발생했습니다.');
+    });
+  });
+</script>
+
+<!-- 포인트 배분 수정 모달 -->
+<div class="modal fade" id="editPointsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">포인트 배분 수정</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editPointsContractId">
+        
+        <div class="mb-3">
+          <label class="form-label fw-bold">계약 번호</label>
+          <div id="editPointsContractNum" class="text-muted"></div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label fw-bold">게임사</label>
+          <div id="editPointsCompany" class="text-muted"></div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label fw-bold">서비스 부문</label>
+          <div id="editPointsCategory" class="text-muted"></div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label fw-bold">계약 금액</label>
+          <div id="editPointsTotal" class="text-primary fs-5"></div>
+        </div>
+        
+        <hr>
+        
+        <div class="mb-3">
+          <label for="editPointsBase" class="form-label fw-bold">
+            기본 포인트 사용 
+            <span class="text-muted">(원)</span>
+          </label>
+          <input type="number" class="form-control" id="editPointsBase" min="0">
+          <small class="text-muted">기본 포인트 + 자부담 포인트로 사용된 금액을 입력하세요.</small>
+        </div>
+        
+        <div class="mb-3">
+          <label for="editPointsExcellent" class="form-label fw-bold">
+            우수 포인트 사용 
+            <span class="text-muted">(원)</span>
+          </label>
+          <input type="number" class="form-control" id="editPointsExcellent" readonly>
+          <small class="text-muted">자동으로 계산됩니다. (계약 금액 - 기본 포인트)</small>
+        </div>
+        
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>자동 배분:</strong> 우수게임사의 경우, 게임의 기본/우수 포인트 비율에 따라 자동으로 배분됩니다. 필요시 수동으로 조정하세요.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary" id="savePointsBtn">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
 </script>
 

@@ -73,7 +73,7 @@
               <div class="col-md-4 mb-3">
                 <div class="card text-white h-100" style="background-color: #6A5ACD;">
                   <div class="card-body text-center">
-                    <h3 class="mb-1"><%= totalRevenue.toLocaleString() %> 원</h3>
+                    <h3 class="mb-1"><%= Math.round(totalRevenue).toLocaleString() %> 원</h3>
                     <small>게임사 총 누적 매출</small>
                   </div>
                 </div>
@@ -81,7 +81,7 @@
               <div class="col-md-4 mb-3">
                 <div class="card text-white h-100" style="background-color: #5B9BD5;">
                   <div class="card-body text-center">
-                    <h3 class="mb-1"><%= companyRevenueStats.reduce((sum, company) => sum + company.global_revenue, 0).toLocaleString() %> 원</h3>
+                    <h3 class="mb-1"><%= Math.round(companyRevenueStats.reduce((sum, company) => sum + company.global_revenue, 0)).toLocaleString() %> 원</h3>
                     <small>글로벌 매출</small>
                   </div>
                 </div>
@@ -89,7 +89,7 @@
               <div class="col-md-4 mb-3">
                 <div class="card text-white h-100" style="background-color: #ED7D31;">
                   <div class="card-body text-center">
-                    <h3 class="mb-1"><%= companyRevenueStats.reduce((sum, company) => sum + company.domestic_revenue, 0).toLocaleString() %> 원</h3>
+                    <h3 class="mb-1"><%= Math.round(companyRevenueStats.reduce((sum, company) => sum + company.domestic_revenue, 0)).toLocaleString() %> 원</h3>
                     <small>국내 매출</small>
                   </div>
                 </div>
@@ -153,16 +153,22 @@
                           <tr>
                             <th>게임사</th>
                             <th id="revenueColumnHeader">총 매출</th>
+                            <th class="text-center">보고서</th>
                           </tr>
                         </thead>
                         <tbody>
                           <% companyRevenueStats.forEach(company => { %>
                             <tr>
                               <td><a href="/games/company/<%= encodeURIComponent(company.company_name) %>"><%= company.company_name %></a></td>
-                              <td class="revenue-total"><strong><%= company.total_revenue.toLocaleString() %></strong></td>
-                              <td class="revenue-global" style="display:none;"><%= company.global_revenue.toLocaleString() %></td>
-                              <td class="revenue-domestic" style="display:none;"><%= company.domestic_revenue.toLocaleString() %></td>
-                              <td class="revenue-target" style="display:none;"><%= (company.total_revenue - company.domestic_revenue).toLocaleString() %></td>
+                              <td class="revenue-total"><strong><%= Math.round(company.total_revenue).toLocaleString() %></strong></td>
+                              <td class="revenue-global" style="display:none;"><%= Math.round(company.global_revenue).toLocaleString() %></td>
+                              <td class="revenue-domestic" style="display:none;"><%= Math.round(company.domestic_revenue).toLocaleString() %></td>
+                              <td class="revenue-target" style="display:none;"><%= Math.round(company.total_revenue - company.domestic_revenue).toLocaleString() %></td>
+                              <td class="text-center">
+                                <a href="/reports/company/<%= encodeURIComponent(company.company_name) %>" class="btn btn-sm btn-outline-primary" title="성과 보고서 보기">
+                                  <i class="bi bi-file-text"></i>
+                                </a>
+                              </td>
                             </tr>
                           <% }); %>
                         </tbody>
@@ -622,30 +628,41 @@
         // 총 매출 셀
         const totalCell = document.createElement('td');
         totalCell.className = 'revenue-total';
-        totalCell.innerHTML = '<strong>' + sortedData[i].total.toLocaleString() + '</strong>';
+        totalCell.innerHTML = '<strong>' + Math.round(sortedData[i].total).toLocaleString() + '</strong>';
         if (type !== 'total') totalCell.style.display = 'none';
         row.appendChild(totalCell);
         
         // 글로벌 매출 셀
         const globalCell = document.createElement('td');
         globalCell.className = 'revenue-global';
-        globalCell.textContent = sortedData[i].global.toLocaleString();
+        globalCell.textContent = Math.round(sortedData[i].global).toLocaleString();
         if (type !== 'global') globalCell.style.display = 'none';
         row.appendChild(globalCell);
         
         // 국내 매출 셀
         const domesticCell = document.createElement('td');
         domesticCell.className = 'revenue-domestic';
-        domesticCell.textContent = sortedData[i].domestic.toLocaleString();
+        domesticCell.textContent = Math.round(sortedData[i].domestic).toLocaleString();
         if (type !== 'domestic') domesticCell.style.display = 'none';
         row.appendChild(domesticCell);
         
         // 진출국가 매출 셀
         const targetCell = document.createElement('td');
         targetCell.className = 'revenue-target';
-        targetCell.textContent = sortedData[i].target.toLocaleString();
+        targetCell.textContent = Math.round(sortedData[i].target).toLocaleString();
         if (type !== 'target') targetCell.style.display = 'none';
         row.appendChild(targetCell);
+        
+        // 보고서 버튼 셀
+        const reportCell = document.createElement('td');
+        reportCell.className = 'text-center';
+        const reportLink = document.createElement('a');
+        reportLink.href = '/reports/company/' + sortedData[i].companyUrl;
+        reportLink.className = 'btn btn-sm btn-outline-primary';
+        reportLink.title = '성과 보고서 보기';
+        reportLink.innerHTML = '<i class="bi bi-file-text"></i>';
+        reportCell.appendChild(reportLink);
+        row.appendChild(reportCell);
         
         // 행 추가
         tbody.appendChild(row);
