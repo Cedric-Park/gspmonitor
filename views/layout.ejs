@@ -39,6 +39,14 @@
           </li>
           <% } %>
 
+          <% if (user.role === '어드민' || user.role === '매니저' || user.role === '담당자') { %>
+          <li class="nav-item">
+            <a class="nav-link <%= title.includes('성과 보고서') ? 'active' : '' %>" href="/reports/annual-performance">
+              <i class="bi bi-file-earmark-bar-graph"></i> 성과 보고서
+            </a>
+          </li>
+          <% } %>
+
           <% if (user.role === '어드민') { %>
           <li class="nav-item">
             <a class="nav-link <%= title === '알림 설정' ? 'active' : '' %>" href="/notifications"><i class="bi bi-bell-fill"></i> 알림 설정</a>
